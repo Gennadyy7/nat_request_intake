@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.logging import get_logger
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
+from app.features.nat.repositories import NatBatchRepository, NatTaskRepository
 
 logger = get_logger(__name__)
 
@@ -13,19 +14,31 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
         self._session_factory = session_factory
         self._session: AsyncSession | None = None
-        # self._items: ItemRepository | None = None
+        self._nat_batches: NatBatchRepository | None = None
+        self._nat_tasks: NatTaskRepository | None = None
         logger.debug('SQLAlchemyUnitOfWork initialized with session factory')
 
-    # @property
-    # def items(self) -> ItemRepository:
-    #     if self._items is None:
-    #         logger.error(
-    #             'Attempted to access repositories outside of context manager block'
-    #         )
-    #         raise RuntimeError(
-    #             'UnitOfWork context is not active. Access attributes inside an "async with" block.'
-    #         )
-    #     return self._items
+    @property
+    def nat_batches(self) -> NatBatchRepository:
+        if self._nat_batches is None:
+            logger.error(
+                'Attempted to access nat_batches repository outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._nat_batches
+
+    @property
+    def nat_tasks(self) -> NatTaskRepository:
+        if self._nat_tasks is None:
+            logger.error(
+                'Attempted to access nat_tasks repository outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._nat_tasks
 
     async def __aenter__(self) -> Self:
         logger.debug('Entering UnitOfWork context: opening new database session')
@@ -34,7 +47,9 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         logger.debug(
             f'Database session opened successfully. Session ID: {hex(id(self._session))}'
         )
-        # self._items = ItemRepository(self._session)
+        self._nat_batches = NatBatchRepository(self._session)
+        self._nat_tasks = NatTaskRepository(self._session)
+        logger.debug('NatBatch and NatTask repositories initialized')
         return self
 
     async def __aexit__(
