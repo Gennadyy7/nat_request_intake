@@ -1,0 +1,82 @@
+[project]
+name = "nat-request-intake"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "hvesko",email = "hvesko@irc.beltelecom.by"}
+]
+readme = "README.md"
+requires-python = ">=3.12,<4"
+dependencies = [
+    "loguru (>=0.7.3,<0.8.0)",
+    "fastapi-keycloak-middleware (>=1.6.0,<2.0.0)",
+    "pydantic-settings (>=2.14.0,<3.0.0)",
+    "pydantic[email,mypy] (>=2.13.3,<3.0.0)",
+    "fastapi (>=0.136.1,<0.137.0)",
+    "uvicorn (>=0.46.0,<0.47.0)",
+    "sqlalchemy[asyncio] (>=2.0.49,<3.0.0)",
+    "asyncpg (>=0.31.0,<0.32.0)",
+    "alembic (>=1.18.4,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = false
+
+[dependency-groups]
+dev = [
+    "loguru-mypy (>=0.0.4,<0.0.5)",
+    "ruff (>=0.15.12,<0.16.0)",
+    "mypy (>=1.20.2,<2.0.0)",
+    "pre-commit (>=4.6.0,<5.0.0)"
+]
+
+[tool.ruff]
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "C4", "PLC", "N", "SIM", "PERF", "TID", "RUF"]
+ignore = ["E501", "UP046", "B008"]
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+force-sort-within-sections = true
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+show_error_codes = true
+warn_unused_ignores = false
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+disallow_any_generics = true
+mypy_path = ["."]
+files = ["app"]
+
+disallow_any_explicit = true
+
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[[tool.mypy.overrides]]
+module = "fastapi_keycloak_middleware.*"
+ignore_missing_imports = true
