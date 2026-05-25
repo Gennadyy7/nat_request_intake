@@ -41,6 +41,26 @@ class Settings(BaseSettings):
     DB_POOL_RECYCLE: int = 3600
     DB_ECHO: bool = False
 
+    NAT_MAX_BATCH_ROWS: int = Field(ge=1)
+    NAT_IDEMPOTENCY_WINDOW_MINUTES: int = Field(ge=1)
+    NAT_OUTPUT_DATETIME_FORMAT: str
+    NAT_OUTPUT_FIELD_SEPARATOR: str
+    NAT_MISSING_FIELD_PLACEHOLDER: str
+    NAT_MAX_EXPANSION_PER_FIELD: int = Field(default=256, ge=1)
+    NAT_MAX_TOTAL_EXPANSION_PRODUCT: int = Field(default=256, ge=1)
+    nat_cidr_allowed_fields_env: str = Field(
+        default='internal_ip',
+        validation_alias='NAT_CIDR_ALLOWED_FIELDS',
+    )
+    nat_cidr_expansion_fields_env: str = Field(
+        default='internal_ip',
+        validation_alias='NAT_CIDR_EXPANSION_FIELDS',
+    )
+    nat_date_input_formats_env: str = Field(validation_alias='NAT_DATE_INPUT_FORMATS')
+    nat_beltelecom_internal_networks_env: str = Field(
+        validation_alias='NAT_BELTELECOM_INTERNAL_NETWORKS'
+    )
+
     @model_validator(mode='after')
     def validate_db_config(self) -> Self:
         if self.db_url_env:
