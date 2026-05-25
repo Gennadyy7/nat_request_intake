@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import sys
 from typing import TYPE_CHECKING
 
@@ -27,7 +29,7 @@ def setup_logging() -> None:
     )
 
 
-def get_logger(name: str | None = None) -> 'Logger':
+def get_logger(name: str | None = None) -> Logger:
     if name:
         return logger.bind(name=name)
     return logger

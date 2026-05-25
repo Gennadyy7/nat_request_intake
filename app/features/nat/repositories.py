@@ -14,6 +14,6 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
         super().__init__(model=NatBatch, session=session)
 
 
-class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
+class NatTaskRepository(SQLAlchemyRepository[NatTask, int]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=NatTask, session=session)
