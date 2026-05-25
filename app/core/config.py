@@ -123,22 +123,6 @@ class Settings(BaseSettings):
         }
 
     @cached_property
-    def NAT_DATE_INPUT_FORMATS(self) -> set[str]:  # noqa: N802
-        return {
-            date_input_format.strip()
-            for date_input_format in self.nat_date_input_formats_env.split(',')
-            if date_input_format.strip()
-        }
-
-    @cached_property
-    def NAT_BELTELECOM_INTERNAL_NETWORKS(self) -> set[str]:  # noqa: N802
-        return {
-            internal_network.strip()
-            for internal_network in self.nat_beltelecom_internal_networks_env.split(',')
-            if internal_network.strip()
-        }
-
-    @cached_property
     def NAT_CIDR_ALLOWED_FIELDS(self) -> frozenset[NatIpFieldName]:  # noqa: N802
         return frozenset(
             NatIpFieldName(item.strip())
@@ -153,6 +137,22 @@ class Settings(BaseSettings):
             for item in self.nat_cidr_expansion_fields_env.split(',')
             if item.strip()
         )
+
+    @cached_property
+    def NAT_DATE_INPUT_FORMATS(self) -> set[str]:  # noqa: N802
+        return {
+            date_input_format.strip()
+            for date_input_format in self.nat_date_input_formats_env.split(',')
+            if date_input_format.strip()
+        }
+
+    @cached_property
+    def NAT_BELTELECOM_INTERNAL_NETWORKS(self) -> set[str]:  # noqa: N802
+        return {
+            internal_network.strip()
+            for internal_network in self.nat_beltelecom_internal_networks_env.split(',')
+            if internal_network.strip()
+        }
 
 
 settings = Settings()  # type: ignore[call-arg]
