@@ -1,14 +1,16 @@
+from app.core.config import Settings
 from app.features.nat.constants import NatRegionCode, ValidationErrorCode
+from app.features.nat.services.optional_field import is_missing_optional_value
 
 
 def validate_region(
     raw_value: str,
+    settings: Settings,
 ) -> tuple[NatRegionCode | None, ValidationErrorCode | None]:
-    stripped = raw_value.strip()
-    if not stripped:
+    if is_missing_optional_value(raw_value, settings):
         return None, None
 
     try:
-        return NatRegionCode(stripped), None
+        return NatRegionCode(raw_value.strip()), None
     except ValueError:
         return None, ValidationErrorCode.INVALID_REGION

@@ -7,6 +7,7 @@ from app.features.nat.constants import (
     NatIpFieldName,
     ValidationErrorCode,
 )
+from app.features.nat.services.optional_field import is_missing_optional_value
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +89,7 @@ def validate_ip_field(
     field_name: NatIpFieldName,
     settings: Settings,
 ) -> IpValidationFailure | None:
-    if not raw_value.strip():
+    if is_missing_optional_value(raw_value, settings):
         return None
 
     parsed = parse_ip_value(raw_value, column)

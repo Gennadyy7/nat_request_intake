@@ -11,6 +11,7 @@ from app.features.nat.constants import (
 )
 from app.features.nat.schemas.validated_row import ValidatedRow
 from app.features.nat.services.header_validator import get_row_value
+from app.features.nat.services.optional_field import is_missing_optional_value
 from app.features.nat.services.validators.date_validator import (
     DateValidationFailure,
     DateValidationSuccess,
@@ -117,7 +118,7 @@ def validate_row(
             )
 
     region_raw = get_row_value(row, InputColumnName.REGION)
-    region_value, region_error_code = validate_region(region_raw)
+    region_value, region_error_code = validate_region(region_raw, settings)
     if region_error_code is not None:
         errors.append(
             RowValidationError(
@@ -139,13 +140,16 @@ def validate_row(
             date_from=date_from.value,
             date_to=date_to.value,
             internal_ip=_optional_value(
-                get_row_value(row, InputColumnName.INTERNAL_IP)
+                get_row_value(row, InputColumnName.INTERNAL_IP),
+                settings,
             ),
             external_ip=_optional_value(
-                get_row_value(row, InputColumnName.EXTERNAL_IP)
+                get_row_value(row, InputColumnName.EXTERNAL_IP),
+                settings,
             ),
             resource_ip=_optional_value(
-                get_row_value(row, InputColumnName.RESOURCE_IP)
+                get_row_value(row, InputColumnName.RESOURCE_IP),
+                settings,
             ),
             region=region_value,
         ),
@@ -159,8 +163,7 @@ def _has_expected_columns(row: dict[str, str]) -> bool:
     return row_keys == required_names and len(row) == len(REQUIRED_COLUMNS)
 
 
-def _optional_value(raw_value: str) -> str | None:
-    stripped = raw_value.strip()
-    if not stripped:
+def _optional_value(raw_value: str, settings: Settings) -> str | None:
+    if is_missing_optional_value(raw_value, settings):
         return None
-    return stripped
+    return raw_value.strip()
