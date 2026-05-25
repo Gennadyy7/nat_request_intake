@@ -1,9 +1,15 @@
+from collections.abc import Sequence
+
 from pydantic import EmailStr
 
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
-from app.features.nat.constants import IntakeStatus, ValidationErrorCode
+from app.features.nat.constants import (
+    DeduplicationErrorCode,
+    IntakeStatus,
+    ValidationErrorCode,
+)
 from app.features.nat.schemas.intake import (
     FileErrorResponse,
     IntakeResponse,
@@ -12,8 +18,10 @@ from app.features.nat.schemas.intake import (
 )
 from app.features.nat.schemas.validated_row import ValidatedRow
 from app.features.nat.services.deduplication.deduplication_service import (
-    deduplicate_rows,
+    DeduplicationOutcome,
+    DeduplicationRowError,
 )
+from app.features.nat.services.deduplication.key_builder import build_deduplication_key
 from app.features.nat.services.file_gate import (
     validate_extension,
     validate_filename,
@@ -27,13 +35,15 @@ logger = get_logger(__name__)
 
 
 class IntakeService:
+    def __init__(self, uow: UnitOfWorkProtocol) -> None:
+        self._uow = uow
+
     async def process(
         self,
         *,
         filename: str | None,
         content: bytes,
         sender_email: EmailStr,
-        uow: UnitOfWorkProtocol,
     ) -> IntakeResponse:
         resolved_filename = filename or ''
 
@@ -125,7 +135,7 @@ class IntakeService:
             if outcome.validated_row is not None:
                 validated_internal.append(outcome.validated_row)
 
-        deduplication_outcome = await deduplicate_rows(validated_internal, uow)
+        deduplication_outcome = await self._deduplicate_rows(validated_internal)
 
         for dedup_error in deduplication_outcome.errors:
             row_errors.append(
@@ -169,6 +179,34 @@ class IntakeService:
             validated_rows=validated_rows,
         )
 
+    async def _deduplicate_rows(
+        self,
+        rows: Sequence[ValidatedRow],
+    ) -> DeduplicationOutcome:
+        accepted_rows: list[ValidatedRow] = []
+        errors: list[DeduplicationRowError] = []
+
+        for row in rows:
+            deduplication_key = build_deduplication_key(row)
+            registered = await self._uow.nat_dedup_keys.register_if_absent(
+                deduplication_key
+            )
+            if registered:
+                accepted_rows.append(row)
+                continue
+
+            errors.append(
+                DeduplicationRowError(
+                    row_number=row.row_number,
+                    error_code=DeduplicationErrorCode.DUPLICATE_REQUEST,
+                )
+            )
+
+        return DeduplicationOutcome(
+            accepted_rows=tuple(accepted_rows),
+            errors=tuple(errors),
+        )
+
     def _to_validated_row_response(
         self, validated_row: ValidatedRow
     ) -> ValidatedRowResponse:
@@ -206,6 +244,3 @@ class IntakeService:
             row_errors=[],
             validated_rows=[],
         )
-
-
-intake_service = IntakeService()

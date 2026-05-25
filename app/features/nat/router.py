@@ -5,12 +5,11 @@ from fastapi.responses import JSONResponse
 from fastapi_keycloak_middleware import get_user
 from pydantic import EmailStr
 
-from app.core.dependencies import get_uow
-from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.auth.schemas import User
 from app.features.nat.constants import IntakeStatus
+from app.features.nat.dependencies import get_intake_service
 from app.features.nat.schemas.intake import IntakeResponse
-from app.features.nat.services.intake_service import intake_service
+from app.features.nat.services.intake_service import IntakeService
 
 router = APIRouter(prefix='/nat', tags=['nat'])
 
@@ -22,16 +21,15 @@ router = APIRouter(prefix='/nat', tags=['nat'])
 )
 async def intake_file(
     _user: Annotated[User, Depends(get_user)],
-    uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
+    service: Annotated[IntakeService, Depends(get_intake_service)],
     file: Annotated[UploadFile, File()],
     sender_email: Annotated[EmailStr, Form()],
 ) -> IntakeResponse | JSONResponse:
     content = await file.read()
-    result = await intake_service.process(
+    result = await service.process(
         filename=file.filename,
         content=content,
         sender_email=sender_email,
-        uow=uow,
     )
     if result.status == IntakeStatus.REJECTED:
         return JSONResponse(
