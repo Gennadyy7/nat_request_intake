@@ -1,7 +1,7 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_keycloak_middleware import setup_keycloak_middleware
 from sqlalchemy import text
@@ -63,7 +63,7 @@ app.include_router(api_router, prefix='/api')
 
 @app.get('/')
 async def root_redirect() -> Response:
-    return Response(status_code=302, headers={'Location': '/docs'})
+    return Response(status_code=status.HTTP_302_FOUND, headers={'Location': '/docs'})
 
 
 @app.get('/health')
@@ -74,7 +74,10 @@ async def health_check() -> dict[str, str]:
             await session.execute(text('SELECT 1'))
     except Exception as e:
         logger.error(f'Health check failed: {e}')
-        raise HTTPException(status_code=503, detail='Service unavailable') from e
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail='Service unavailable',
+        ) from e
     return {'status': 'ok'}
 
 

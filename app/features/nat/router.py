@@ -16,7 +16,7 @@ router = APIRouter(prefix='/nat', tags=['nat'])
 @router.post(
     '/intake',
     response_model=IntakeResponse,
-    responses={422: {'model': IntakeResponse}},
+    responses={status.HTTP_422_UNPROCESSABLE_CONTENT: {'model': IntakeResponse}},
 )
 async def intake_file(
     _user: Annotated[User, Depends(get_user)],
