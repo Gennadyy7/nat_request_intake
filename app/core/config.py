@@ -114,20 +114,20 @@ class Settings(BaseSettings):
         }
 
     @cached_property
-    def NAT_DATE_INPUT_FORMATS(self) -> tuple[str, ...]:  # noqa: N802
-        return tuple(
+    def NAT_DATE_INPUT_FORMATS(self) -> set[str]:  # noqa: N802
+        return {
             date_input_format.strip()
             for date_input_format in self.nat_date_input_formats_env.split(',')
             if date_input_format.strip()
-        )
+        }
 
     @cached_property
-    def NAT_BELTELECOM_INTERNAL_NETWORKS(self) -> tuple[str, ...]:  # noqa: N802
-        return tuple(
+    def NAT_BELTELECOM_INTERNAL_NETWORKS(self) -> set[str]:  # noqa: N802
+        return {
             internal_network.strip()
             for internal_network in self.nat_beltelecom_internal_networks_env.split(',')
             if internal_network.strip()
-        )
+        }
 
 
 settings = Settings()  # type: ignore[call-arg]
