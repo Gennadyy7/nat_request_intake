@@ -50,11 +50,11 @@ class Settings(BaseSettings):
     NAT_MISSING_FIELD_PLACEHOLDER: str
     NAT_MAX_EXPANSION_PER_FIELD: int = Field(default=256, ge=1)
     NAT_MAX_TOTAL_EXPANSION_PRODUCT: int = Field(default=256, ge=1)
-    NAT_CIDR_ALLOWED_FIELDS: frozenset[NatIpFieldName] = frozenset(
-        [NatIpFieldName.INTERNAL_IP]
+    nat_cidr_allowed_fields_env: str = Field(
+        validation_alias='NAT_CIDR_ALLOWED_FIELDS',
     )
-    NAT_CIDR_EXPANSION_FIELDS: frozenset[NatIpFieldName] = frozenset(
-        [NatIpFieldName.INTERNAL_IP]
+    nat_cidr_expansion_fields_env: str = Field(
+        validation_alias='NAT_CIDR_EXPANSION_FIELDS',
     )
     nat_date_input_formats_env: str = Field(validation_alias='NAT_DATE_INPUT_FORMATS')
     nat_beltelecom_internal_networks_env: str = Field(
@@ -62,14 +62,23 @@ class Settings(BaseSettings):
     )
 
     @field_validator(
-        'NAT_CIDR_ALLOWED_FIELDS',
-        'NAT_CIDR_EXPANSION_FIELDS',
+        'nat_cidr_allowed_fields_env',
+        'nat_cidr_expansion_fields_env',
         mode='before',
     )
     @classmethod
-    def parse_comma_separated_value(cls, value: object) -> object:
-        if isinstance(value, str):
-            return [item.strip() for item in value.split(',') if item.strip()]
+    def validate_nat_ip_field_names(cls, value: str) -> str:
+        for item in value.split(','):
+            stripped = item.strip()
+            if not stripped:
+                continue
+            try:
+                NatIpFieldName(stripped)
+            except ValueError as exc:
+                raise ValueError(
+                    f'Invalid NAT IP field name {stripped!r}. '
+                    f'Allowed values: {", ".join(member.value for member in NatIpFieldName)}'
+                ) from exc
         return value
 
     @model_validator(mode='after')
@@ -128,6 +137,22 @@ class Settings(BaseSettings):
             for internal_network in self.nat_beltelecom_internal_networks_env.split(',')
             if internal_network.strip()
         }
+
+    @cached_property
+    def NAT_CIDR_ALLOWED_FIELDS(self) -> frozenset[NatIpFieldName]:  # noqa: N802
+        return frozenset(
+            NatIpFieldName(item.strip())
+            for item in self.nat_cidr_allowed_fields_env.split(',')
+            if item.strip()
+        )
+
+    @cached_property
+    def NAT_CIDR_EXPANSION_FIELDS(self) -> frozenset[NatIpFieldName]:  # noqa: N802
+        return frozenset(
+            NatIpFieldName(item.strip())
+            for item in self.nat_cidr_expansion_fields_env.split(',')
+            if item.strip()
+        )
 
 
 settings = Settings()  # type: ignore[call-arg]
