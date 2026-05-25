@@ -2,12 +2,17 @@ from pydantic import EmailStr
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.nat.constants import IntakeStatus, ValidationErrorCode
 from app.features.nat.schemas.intake import (
     FileErrorResponse,
     IntakeResponse,
     RowErrorResponse,
     ValidatedRowResponse,
+)
+from app.features.nat.schemas.validated_row import ValidatedRow
+from app.features.nat.services.deduplication.deduplication_service import (
+    deduplicate_rows,
 )
 from app.features.nat.services.file_gate import (
     validate_extension,
@@ -22,12 +27,13 @@ logger = get_logger(__name__)
 
 
 class IntakeService:
-    async def validate(
+    async def process(
         self,
         *,
         filename: str | None,
         content: bytes,
         sender_email: EmailStr,
+        uow: UnitOfWorkProtocol,
     ) -> IntakeResponse:
         resolved_filename = filename or ''
 
@@ -90,7 +96,7 @@ class IntakeService:
                 error_code=ValidationErrorCode.TOO_MANY_ROWS,
             )
 
-        validated_rows: list[ValidatedRowResponse] = []
+        validated_internal: list[ValidatedRow] = []
         row_errors: list[RowErrorResponse] = []
 
         for row_index, parsed_row in enumerate(parsed.rows):
@@ -117,18 +123,30 @@ class IntakeService:
                 )
 
             if outcome.validated_row is not None:
-                validated_row = outcome.validated_row
-                validated_rows.append(
-                    ValidatedRowResponse(
-                        row_number=validated_row.row_number,
-                        date_from=validated_row.date_from,
-                        date_to=validated_row.date_to,
-                        internal_ip=validated_row.internal_ip,
-                        external_ip=validated_row.external_ip,
-                        resource_ip=validated_row.resource_ip,
-                        region=validated_row.region,
-                    )
+                validated_internal.append(outcome.validated_row)
+
+        deduplication_outcome = await deduplicate_rows(validated_internal, uow)
+
+        for dedup_error in deduplication_outcome.errors:
+            row_errors.append(
+                RowErrorResponse(
+                    row_number=dedup_error.row_number,
+                    error_code=dedup_error.error_code,
+                    column=None,
                 )
+            )
+            logger.warning(
+                'Duplicate row detected: sender_email={} file_name={} row_number={} error_code={}',
+                sender_email,
+                filename,
+                dedup_error.row_number,
+                dedup_error.error_code.value,
+            )
+
+        validated_rows = [
+            self._to_validated_row_response(row)
+            for row in deduplication_outcome.accepted_rows
+        ]
 
         total_data_rows = len(parsed.rows)
         valid_rows = len(validated_rows)
@@ -149,6 +167,19 @@ class IntakeService:
             file_errors=[],
             row_errors=row_errors,
             validated_rows=validated_rows,
+        )
+
+    def _to_validated_row_response(
+        self, validated_row: ValidatedRow
+    ) -> ValidatedRowResponse:
+        return ValidatedRowResponse(
+            row_number=validated_row.row_number,
+            date_from=validated_row.date_from,
+            date_to=validated_row.date_to,
+            internal_ip=validated_row.internal_ip,
+            external_ip=validated_row.external_ip,
+            resource_ip=validated_row.resource_ip,
+            region=validated_row.region,
         )
 
     def _build_file_rejection(

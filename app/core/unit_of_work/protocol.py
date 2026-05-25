@@ -1,7 +1,11 @@
 from types import TracebackType
 from typing import Protocol, Self
 
-from app.features.nat.repositories import NatBatchRepository, NatTaskRepository
+from app.features.nat.repositories import (
+    NatBatchRepository,
+    NatDedupKeyRepository,
+    NatTaskRepository,
+)
 
 
 class UnitOfWorkProtocol(Protocol):
@@ -10,6 +14,9 @@ class UnitOfWorkProtocol(Protocol):
 
     @property
     def nat_tasks(self) -> NatTaskRepository: ...
+
+    @property
+    def nat_dedup_keys(self) -> NatDedupKeyRepository: ...
 
     async def __aenter__(self) -> Self: ...
 

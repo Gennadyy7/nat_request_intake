@@ -42,6 +42,10 @@ class ValidationErrorCode(StrEnum):
     INVALID_REGION = 'INVALID_REGION'
 
 
+class DeduplicationErrorCode(StrEnum):
+    DUPLICATE_REQUEST = 'DUPLICATE_REQUEST'
+
+
 class NatRegionCode(StrEnum):
     BREST = '1'
     VITEBSK = '2'

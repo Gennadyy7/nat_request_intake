@@ -1,8 +1,17 @@
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import ForeignKey, Integer, String, Text, UniqueConstraint, text
+from sqlalchemy import (
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
@@ -225,3 +234,62 @@ class NatTask(Base, TimestampMixin):
     @property
     def can_retry(self) -> bool:
         return self.is_error_state and self.retry_count < 3
+
+
+class NatDedupKey(Base, TimestampMixin):
+    __tablename__ = 'nat_dedup_keys'
+
+    id: Mapped[UUID] = mapped_column(
+        primary_key=True,
+        default=uuid4,
+        comment='Primary key (UUID v4, generated automatically)',
+    )
+
+    key_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        index=True,
+        comment='SHA-256 hash of the deduplication key fields',
+    )
+
+    date_from: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        comment='Start datetime from the deduplication key',
+    )
+
+    date_to: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        comment='End datetime from the deduplication key',
+    )
+
+    internal_ip: Mapped[str | None] = mapped_column(
+        String(45),
+        nullable=True,
+        comment='Internal IP from the deduplication key',
+    )
+
+    external_ip: Mapped[str | None] = mapped_column(
+        String(45),
+        nullable=True,
+        comment='External IP from the deduplication key',
+    )
+
+    resource_ip: Mapped[str | None] = mapped_column(
+        String(45),
+        nullable=True,
+        comment='Resource IP from the deduplication key',
+    )
+
+    region: Mapped[str | None] = mapped_column(
+        String(8),
+        nullable=True,
+        comment='Region code from the deduplication key',
+    )
+
+    __table_args__ = (
+        {
+            'comment': 'Registered deduplication keys for idempotency window tracking',
+        },
+    )

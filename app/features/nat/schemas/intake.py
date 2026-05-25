@@ -3,6 +3,7 @@ from datetime import datetime
 from pydantic import BaseModel, EmailStr, Field
 
 from app.features.nat.constants import (
+    DeduplicationErrorCode,
     InputColumnName,
     IntakeStatus,
     NatRegionCode,
@@ -16,7 +17,7 @@ class FileErrorResponse(BaseModel):
 
 class RowErrorResponse(BaseModel):
     row_number: int = Field(ge=1)
-    error_code: ValidationErrorCode
+    error_code: ValidationErrorCode | DeduplicationErrorCode
     column: InputColumnName | None = None
 
 
