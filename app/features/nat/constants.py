@@ -1,4 +1,4 @@
-from enum import IntEnum
+from enum import IntEnum, StrEnum
 
 
 class NatTaskStatus(IntEnum):
@@ -7,3 +7,9 @@ class NatTaskStatus(IntEnum):
     LAUNCHED = 10
     IN_PROGRESS = 20
     COMPLETED = 30
+
+
+class NatIpFieldName(StrEnum):
+    INTERNAL_IP = 'internal_ip'
+    EXTERNAL_IP = 'external_ip'
+    RESOURCE_IP = 'resource_ip'

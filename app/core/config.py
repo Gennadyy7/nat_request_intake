@@ -1,8 +1,10 @@
 from functools import cached_property
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.features.nat.constants import NatIpFieldName
 
 
 class Settings(BaseSettings):
@@ -48,18 +50,29 @@ class Settings(BaseSettings):
     NAT_MISSING_FIELD_PLACEHOLDER: str
     NAT_MAX_EXPANSION_PER_FIELD: int = Field(default=256, ge=1)
     NAT_MAX_TOTAL_EXPANSION_PRODUCT: int = Field(default=256, ge=1)
-    nat_cidr_allowed_fields_env: str = Field(
-        default='internal_ip',
-        validation_alias='NAT_CIDR_ALLOWED_FIELDS',
+    NAT_CIDR_ALLOWED_FIELDS: frozenset[NatIpFieldName] = frozenset(
+        [NatIpFieldName.INTERNAL_IP]
     )
-    nat_cidr_expansion_fields_env: str = Field(
-        default='internal_ip',
-        validation_alias='NAT_CIDR_EXPANSION_FIELDS',
+    NAT_CIDR_EXPANSION_FIELDS: frozenset[NatIpFieldName] = frozenset(
+        [NatIpFieldName.INTERNAL_IP]
     )
     nat_date_input_formats_env: str = Field(validation_alias='NAT_DATE_INPUT_FORMATS')
     nat_beltelecom_internal_networks_env: str = Field(
         validation_alias='NAT_BELTELECOM_INTERNAL_NETWORKS'
     )
+
+    @field_validator(
+        'NAT_CIDR_ALLOWED_FIELDS',
+        'NAT_CIDR_EXPANSION_FIELDS',
+        'nat_date_input_formats_env',
+        'nat_beltelecom_internal_networks_env',
+        mode='before',
+    )
+    @classmethod
+    def parse_comma_separated_value(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(',') if item.strip()]
+        return value
 
     @model_validator(mode='after')
     def validate_db_config(self) -> Self:
@@ -101,6 +114,22 @@ class Settings(BaseSettings):
         return {
             role.strip() for role in self.admin_roles_env.split(',') if role.strip()
         }
+
+    @cached_property
+    def NAT_DATE_INPUT_FORMATS(self) -> tuple[str, ...]:  # noqa: N802
+        return tuple(
+            date_input_format.strip()
+            for date_input_format in self.nat_date_input_formats_env.split(',')
+            if date_input_format.strip()
+        )
+
+    @cached_property
+    def NAT_BELTELECOM_INTERNAL_NETWORKS(self) -> tuple[str, ...]:  # noqa: N802
+        return tuple(
+            internal_network.strip()
+            for internal_network in self.nat_beltelecom_internal_networks_env.split(',')
+            if internal_network.strip()
+        )
 
 
 settings = Settings()  # type: ignore[call-arg]
