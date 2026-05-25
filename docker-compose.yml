@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: keycloak_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    env_file:
+      - ./.env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - keycloak_network
+
+  app_postgres:
+    image: postgres:17-alpine
+    container_name: app_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - app_postgres_data:/var/lib/postgresql/data
+    env_file:
+      - ./.env
+    environment:
+      - POSTGRES_DB=${DATABASE_NAME}
+      - POSTGRES_USER=${DATABASE_USER}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$DATABASE_USER -d $$DATABASE_NAME"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - keycloak_network
+
+  keycloak:
+    build:
+      context: .
+      dockerfile: Dockerfile.keycloak
+    container_name: keycloak_service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    env_file:
+      - ./.env
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    command: start --optimized --import-realm
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '200' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 50s
+    restart: unless-stopped
+    networks:
+      - keycloak_network
+
+  fastapi_app:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    container_name: fastapi_backend
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - keycloak_network
+
+volumes:
+  postgres_data:
+  app_postgres_data:
+
+networks:
+  keycloak_network:
+    driver: bridge
