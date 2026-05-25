@@ -3,7 +3,7 @@ from datetime import datetime
 
 from dateutil import parser as dateutil_parser
 
-from app.core.config import Settings
+from app.core.config import settings
 from app.features.nat.constants import InputColumnName, ValidationErrorCode
 
 
@@ -33,7 +33,7 @@ def validate_required_date(
     return None
 
 
-def parse_date(raw_value: str, settings: Settings) -> datetime | None:
+def parse_date(raw_value: str) -> datetime | None:
     stripped = raw_value.strip()
     for date_format in settings.NAT_DATE_INPUT_FORMATS:
         try:
@@ -52,13 +52,12 @@ def parse_date(raw_value: str, settings: Settings) -> datetime | None:
 def validate_date_field(
     raw_value: str,
     column: InputColumnName,
-    settings: Settings,
 ) -> DateValidationResult:
     missing_error = validate_required_date(raw_value, column)
     if missing_error is not None:
         return missing_error
 
-    parsed = parse_date(raw_value, settings)
+    parsed = parse_date(raw_value)
     if parsed is None:
         return DateValidationFailure(
             error_code=ValidationErrorCode.INVALID_DATE_FORMAT,

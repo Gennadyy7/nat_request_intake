@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from ipaddress import IPv4Address, IPv4Network
 
-from app.core.config import Settings
+from app.core.config import settings
 from app.features.nat.constants import (
     InputColumnName,
     NatIpFieldName,
@@ -87,9 +87,8 @@ def validate_ip_field(
     raw_value: str,
     column: InputColumnName,
     field_name: NatIpFieldName,
-    settings: Settings,
 ) -> IpValidationFailure | None:
-    if is_missing_optional_value(raw_value, settings):
+    if is_missing_optional_value(raw_value):
         return None
 
     parsed = parse_ip_value(raw_value, column)
@@ -105,9 +104,7 @@ def validate_ip_field(
             column=column,
         )
 
-    if field_name == NatIpFieldName.INTERNAL_IP and not _is_beltelecom_ip(
-        parsed, settings
-    ):
+    if field_name == NatIpFieldName.INTERNAL_IP and not _is_beltelecom_ip(parsed):
         return IpValidationFailure(
             error_code=ValidationErrorCode.IP_NOT_BELTELECOM,
             column=column,
@@ -116,7 +113,7 @@ def validate_ip_field(
     return None
 
 
-def _is_beltelecom_ip(parsed: ParsedIpValue, settings: Settings) -> bool:
+def _is_beltelecom_ip(parsed: ParsedIpValue) -> bool:
     allowed_networks = [
         IPv4Network(network, strict=False)
         for network in settings.NAT_BELTELECOM_INTERNAL_NETWORKS

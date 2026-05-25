@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-from app.core.config import Settings
 from app.features.nat.constants import (
     COLUMN_TO_IP_FIELD,
     IP_COLUMNS,
@@ -39,7 +38,6 @@ def validate_row(
     row: dict[str, str],
     raw_field_count: int,
     row_index: int,
-    settings: Settings,
 ) -> RowValidationOutcome:
     row_number = row_index + 1
     errors: list[RowValidationError] = []
@@ -69,7 +67,7 @@ def validate_row(
 
     for column in (InputColumnName.DATE_FROM, InputColumnName.DATE_TO):
         raw_value = get_row_value(row, column)
-        date_result = validate_date_field(raw_value, column, settings)
+        date_result = validate_date_field(raw_value, column)
         if isinstance(date_result, DateValidationFailure):
             if not any(
                 error.column == column
@@ -106,7 +104,6 @@ def validate_row(
             raw_value=raw_value,
             column=column,
             field_name=COLUMN_TO_IP_FIELD[column],
-            settings=settings,
         )
         if ip_error is not None:
             errors.append(
@@ -118,7 +115,7 @@ def validate_row(
             )
 
     region_raw = get_row_value(row, InputColumnName.REGION)
-    region_value, region_error_code = validate_region(region_raw, settings)
+    region_value, region_error_code = validate_region(region_raw)
     if region_error_code is not None:
         errors.append(
             RowValidationError(
@@ -140,16 +137,13 @@ def validate_row(
             date_from=date_from.value,
             date_to=date_to.value,
             internal_ip=_optional_value(
-                get_row_value(row, InputColumnName.INTERNAL_IP),
-                settings,
+                get_row_value(row, InputColumnName.INTERNAL_IP)
             ),
             external_ip=_optional_value(
-                get_row_value(row, InputColumnName.EXTERNAL_IP),
-                settings,
+                get_row_value(row, InputColumnName.EXTERNAL_IP)
             ),
             resource_ip=_optional_value(
-                get_row_value(row, InputColumnName.RESOURCE_IP),
-                settings,
+                get_row_value(row, InputColumnName.RESOURCE_IP)
             ),
             region=region_value,
         ),
@@ -163,7 +157,7 @@ def _has_expected_columns(row: dict[str, str]) -> bool:
     return row_keys == required_names and len(row) == len(REQUIRED_COLUMNS)
 
 
-def _optional_value(raw_value: str, settings: Settings) -> str | None:
-    if is_missing_optional_value(raw_value, settings):
+def _optional_value(raw_value: str) -> str | None:
+    if is_missing_optional_value(raw_value):
         return None
     return raw_value.strip()

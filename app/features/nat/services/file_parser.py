@@ -4,7 +4,7 @@ from pathlib import PurePath
 
 from openpyxl import load_workbook
 
-from app.core.config import Settings
+from app.core.config import settings
 from app.features.nat.constants import AllowedFileExtension
 from app.features.nat.services.parsed_file import ParsedFile, ParsedRow
 
@@ -12,7 +12,6 @@ from app.features.nat.services.parsed_file import ParsedFile, ParsedRow
 def parse_file_content(
     content: bytes,
     extension: AllowedFileExtension,
-    settings: Settings,
 ) -> ParsedFile:
     if extension == AllowedFileExtension.XLSX:
         return _parse_xlsx(content)

@@ -1,6 +1,6 @@
 from pydantic import EmailStr
 
-from app.core.config import Settings, settings
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.features.nat.constants import IntakeStatus, ValidationErrorCode
 from app.features.nat.schemas.intake import (
@@ -22,9 +22,6 @@ logger = get_logger(__name__)
 
 
 class IntakeService:
-    def __init__(self, app_settings: Settings) -> None:
-        self._settings = app_settings
-
     async def validate(
         self,
         *,
@@ -62,7 +59,7 @@ class IntakeService:
                 error_code=empty_error,
             )
 
-        parsed = parse_file_content(content, extension, self._settings)
+        parsed = parse_file_content(content, extension)
 
         if not parsed.headers and not parsed.rows:
             return self._build_file_rejection(
@@ -86,7 +83,7 @@ class IntakeService:
                 error_code=ValidationErrorCode.EMPTY_FILE,
             )
 
-        if len(parsed.rows) > self._settings.NAT_MAX_BATCH_ROWS:
+        if len(parsed.rows) > settings.NAT_MAX_BATCH_ROWS:
             return self._build_file_rejection(
                 file_name=filename,
                 sender_email=sender_email,
@@ -101,7 +98,6 @@ class IntakeService:
                 parsed_row.values,
                 parsed_row.raw_field_count,
                 row_index,
-                self._settings,
             )
             for error in outcome.errors:
                 row_errors.append(
@@ -181,4 +177,4 @@ class IntakeService:
         )
 
 
-intake_service = IntakeService(settings)
+intake_service = IntakeService()
