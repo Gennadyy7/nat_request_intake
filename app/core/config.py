@@ -64,8 +64,6 @@ class Settings(BaseSettings):
     @field_validator(
         'NAT_CIDR_ALLOWED_FIELDS',
         'NAT_CIDR_EXPANSION_FIELDS',
-        'nat_date_input_formats_env',
-        'nat_beltelecom_internal_networks_env',
         mode='before',
     )
     @classmethod
