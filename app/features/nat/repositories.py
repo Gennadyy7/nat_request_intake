@@ -55,7 +55,7 @@ class NatDedupKeyRepository(SQLAlchemyRepository[NatDedupKey, UUID]):
             )
             SELECT
                 :id,
-                :key_hash,
+                :key_hash_insert,
                 :date_from,
                 :date_to,
                 :internal_ip,
@@ -67,7 +67,7 @@ class NatDedupKeyRepository(SQLAlchemyRepository[NatDedupKey, UUID]):
             WHERE NOT EXISTS (
                 SELECT 1
                 FROM nat_dedup_keys
-                WHERE key_hash = :key_hash
+                WHERE key_hash = :key_hash_lookup
                   AND created_at >= :window_start
             )
             RETURNING id
@@ -77,7 +77,8 @@ class NatDedupKeyRepository(SQLAlchemyRepository[NatDedupKey, UUID]):
             insert_stmt,
             {
                 'id': uuid4(),
-                'key_hash': key_hash,
+                'key_hash_insert': key_hash,
+                'key_hash_lookup': key_hash,
                 'date_from': key.date_from,
                 'date_to': key.date_to,
                 'internal_ip': key.internal_ip,
