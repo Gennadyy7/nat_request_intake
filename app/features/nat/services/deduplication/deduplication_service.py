@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.nat.constants import DeduplicationErrorCode
-from app.features.nat.schemas.validated_row import ValidatedRow
+from app.features.nat.domain.validated_row import ValidatedRow
 from app.features.nat.services.deduplication.deduplication_key import (
     build_deduplication_key,
 )

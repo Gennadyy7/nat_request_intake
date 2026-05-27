@@ -3,7 +3,7 @@ from datetime import datetime
 import hashlib
 
 from app.features.nat.constants import NatRegionCode
-from app.features.nat.schemas.validated_row import ValidatedRow
+from app.features.nat.domain.validated_row import ValidatedRow
 
 
 @dataclass(frozen=True, slots=True)

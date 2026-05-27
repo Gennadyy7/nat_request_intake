@@ -8,7 +8,7 @@ from app.features.nat.constants import (
     InputColumnName,
     ValidationErrorCode,
 )
-from app.features.nat.schemas.validated_row import ValidatedRow
+from app.features.nat.domain.validated_row import ValidatedRow
 from app.features.nat.services.header_validator import get_row_value
 from app.features.nat.services.optional_field import is_missing_optional_value
 from app.features.nat.services.validators.date_validator import (

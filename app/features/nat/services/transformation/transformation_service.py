@@ -7,7 +7,7 @@ from app.features.nat.constants import (
     NatIpFieldName,
     TransformationErrorCode,
 )
-from app.features.nat.schemas.validated_row import ValidatedRow
+from app.features.nat.domain.validated_row import ValidatedRow
 from app.features.nat.services.transformation.ip_expansion import (
     IpExpansionError,
     build_ip_axis,
