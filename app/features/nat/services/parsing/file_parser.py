@@ -54,6 +54,8 @@ def _parse_xlsx(content: bytes) -> ParsedFile:
             return ParsedFile(headers=[], rows=[])
 
         headers = [_cell_to_str(value) for value in header_row]
+        while headers and not headers[-1]:
+            headers.pop()
         rows: list[ParsedRow] = []
         for data_row in row_iter:
             if data_row is None or not any(
