@@ -18,6 +18,13 @@ def parse_file_content(
     return _parse_delimited(content, settings.NAT_INPUT_FIELD_SEPARATOR)
 
 
+def _trim_trailing_empty(values: list[str]) -> list[str]:
+    end = len(values)
+    while end > 0 and not values[end - 1]:
+        end -= 1
+    return values[:end]
+
+
 def _build_parsed_row(headers: list[str], row_values: list[str]) -> ParsedRow:
     return ParsedRow(
         values={
@@ -53,16 +60,16 @@ def _parse_xlsx(content: bytes) -> ParsedFile:
         if header_row is None:
             return ParsedFile(headers=[], rows=[])
 
-        headers = [_cell_to_str(value) for value in header_row]
-        while headers and not headers[-1]:
-            headers.pop()
+        headers = _trim_trailing_empty([_cell_to_str(value) for value in header_row])
         rows: list[ParsedRow] = []
         for data_row in row_iter:
             if data_row is None or not any(
                 value is not None and str(value).strip() for value in data_row
             ):
                 continue
-            row_values = [_cell_to_str(value) for value in data_row]
+            row_values = _trim_trailing_empty(
+                [_cell_to_str(value) for value in data_row]
+            )
             rows.append(_build_parsed_row(headers, row_values))
         return ParsedFile(headers=headers, rows=rows)
     finally:
