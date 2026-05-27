@@ -7,7 +7,7 @@ from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.nat.services.deduplication.deduplication_service import (
     DeduplicationService,
 )
-from app.features.nat.services.intake_service import IntakeService
+from app.features.nat.services.intake.intake_service import IntakeService
 from app.features.nat.services.persistence.batch_persistence import (
     BatchPersistenceService,
 )

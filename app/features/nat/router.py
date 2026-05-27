@@ -9,7 +9,7 @@ from app.features.auth.schemas import User
 from app.features.nat.constants import IntakeStatus
 from app.features.nat.dependencies import get_intake_service
 from app.features.nat.schemas.intake import IntakeResponse
-from app.features.nat.services.intake_service import IntakeService
+from app.features.nat.services.intake.intake_service import IntakeService
 
 router = APIRouter(prefix='/nat', tags=['nat'])
 

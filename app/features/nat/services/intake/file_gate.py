@@ -1,8 +1,5 @@
-from app.features.nat.constants import (
-    AllowedFileExtension,
-    ValidationErrorCode,
-)
-from app.features.nat.services.file_parser import resolve_extension
+from app.features.nat.constants import AllowedFileExtension, ValidationErrorCode
+from app.features.nat.services.parsing.file_parser import resolve_extension
 
 
 def validate_filename(filename: str | None) -> ValidationErrorCode | None:

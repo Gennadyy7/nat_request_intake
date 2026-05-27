@@ -17,21 +17,21 @@ from app.features.nat.schemas.intake import (
 from app.features.nat.services.deduplication.deduplication_service import (
     DeduplicationService,
 )
-from app.features.nat.services.file_gate import (
+from app.features.nat.services.intake.file_gate import (
     validate_extension,
     validate_filename,
     validate_non_empty_content,
 )
-from app.features.nat.services.file_parser import parse_file_content
-from app.features.nat.services.header_validator import validate_headers
+from app.features.nat.services.parsing.file_parser import parse_file_content
 from app.features.nat.services.persistence.batch_persistence import (
     BatchPersistenceService,
 )
 from app.features.nat.services.persistence.file_storage import FileStorageService
-from app.features.nat.services.row_validator import validate_row
 from app.features.nat.services.transformation.transformation_service import (
     TransformationService,
 )
+from app.features.nat.services.validation.header_validator import validate_headers
+from app.features.nat.services.validation.row_validator import validate_row
 
 logger = get_logger(__name__)
 

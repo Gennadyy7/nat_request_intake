@@ -6,7 +6,7 @@ from app.features.nat.constants import (
     NatIpFieldName,
     ValidationErrorCode,
 )
-from app.features.nat.services.ip_parsing import (
+from app.features.nat.services.ip.parsing import (
     IpValidationFailure,
     ParsedIpValue,
     parse_ip_value,

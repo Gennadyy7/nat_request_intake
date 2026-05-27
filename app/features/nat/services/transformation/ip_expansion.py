@@ -7,7 +7,7 @@ from app.features.nat.constants import (
     NatIpFieldName,
     TransformationErrorCode,
 )
-from app.features.nat.services.ip_parsing import ParsedIpValue, parse_ip_value
+from app.features.nat.services.ip.parsing import ParsedIpValue, parse_ip_value
 
 
 @dataclass(frozen=True, slots=True)
