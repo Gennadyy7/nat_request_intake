@@ -43,4 +43,4 @@ class IntakeResponse(BaseModel):
     rejected_rows: int = Field(ge=0)
     file_errors: list[FileErrorResponse]
     row_errors: list[RowErrorResponse]
-    validated_rows: list[TransformedRowResponse]
+    transformed_rows: list[TransformedRowResponse]

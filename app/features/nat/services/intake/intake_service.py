@@ -262,7 +262,7 @@ class IntakeService:
             rejected_rows=rejected_rows,
             file_errors=[],
             row_errors=row_errors,
-            validated_rows=[
+            transformed_rows=[
                 self._to_transformed_row_response(row) for row in transformed_rows
             ],
         )
@@ -293,7 +293,7 @@ class IntakeService:
                 FileErrorResponse(error_code=ValidationErrorCode.NO_VALID_ROWS)
             ],
             row_errors=row_errors,
-            validated_rows=[],
+            transformed_rows=[],
         )
 
     def _to_transformed_row_response(
@@ -335,5 +335,5 @@ class IntakeService:
             rejected_rows=0,
             file_errors=[FileErrorResponse(error_code=error_code)],
             row_errors=[],
-            validated_rows=[],
+            transformed_rows=[],
         )
