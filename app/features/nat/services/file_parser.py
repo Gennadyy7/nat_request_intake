@@ -6,7 +6,7 @@ from openpyxl import load_workbook
 
 from app.core.config import settings
 from app.features.nat.constants import AllowedFileExtension
-from app.features.nat.services.parsed_file import ParsedFile, ParsedRow
+from app.features.nat.domain.parsed_file import ParsedFile, ParsedRow
 
 
 def parse_file_content(

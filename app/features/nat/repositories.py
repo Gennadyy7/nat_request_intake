@@ -7,11 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.repositories.sqlalchemy import SQLAlchemyRepository
+from app.features.nat.domain.deduplication_key import DeduplicationKey
 from app.features.nat.models import NatBatch, NatDedupKey, NatTask
-from app.features.nat.services.deduplication.deduplication_key import (
-    DeduplicationKey,
-    build_key_hash,
-)
+from app.features.nat.services.deduplication.deduplication_key import build_key_hash
 
 logger = get_logger(__name__)
 

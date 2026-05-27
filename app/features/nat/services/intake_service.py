@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.nat.constants import IntakeStatus, ValidationErrorCode
+from app.features.nat.domain.transformed_row import TransformedRow
 from app.features.nat.domain.validated_row import ValidatedRow
 from app.features.nat.schemas.intake import (
     FileErrorResponse,
@@ -31,7 +32,6 @@ from app.features.nat.services.row_validator import validate_row
 from app.features.nat.services.transformation.transformation_service import (
     TransformationService,
 )
-from app.features.nat.services.transformation.transformed_row import TransformedRow
 
 logger = get_logger(__name__)
 

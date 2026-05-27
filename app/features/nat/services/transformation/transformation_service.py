@@ -7,6 +7,7 @@ from app.features.nat.constants import (
     NatIpFieldName,
     TransformationErrorCode,
 )
+from app.features.nat.domain.transformed_row import TransformedRow
 from app.features.nat.domain.validated_row import ValidatedRow
 from app.features.nat.services.transformation.ip_expansion import (
     IpExpansionError,
@@ -14,7 +15,6 @@ from app.features.nat.services.transformation.ip_expansion import (
     check_total_product_limit,
     iter_cartesian_product,
 )
-from app.features.nat.services.transformation.transformed_row import TransformedRow
 
 
 @dataclass(frozen=True, slots=True)

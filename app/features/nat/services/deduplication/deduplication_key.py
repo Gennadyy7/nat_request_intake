@@ -1,19 +1,7 @@
-from dataclasses import dataclass
-from datetime import datetime
 import hashlib
 
-from app.features.nat.constants import NatRegionCode
+from app.features.nat.domain.deduplication_key import DeduplicationKey
 from app.features.nat.domain.validated_row import ValidatedRow
-
-
-@dataclass(frozen=True, slots=True)
-class DeduplicationKey:
-    date_from: datetime
-    date_to: datetime
-    internal_ip: str | None
-    external_ip: str | None
-    resource_ip: str | None
-    region: NatRegionCode | None
 
 
 def build_deduplication_key(validated_row: ValidatedRow) -> DeduplicationKey:

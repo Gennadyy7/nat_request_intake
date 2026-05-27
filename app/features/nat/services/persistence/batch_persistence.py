@@ -5,8 +5,8 @@ from pydantic import EmailStr
 
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.nat.constants import NatTaskStatus
+from app.features.nat.domain.transformed_row import TransformedRow
 from app.features.nat.models import NatBatch, NatTask
-from app.features.nat.services.transformation.transformed_row import TransformedRow
 
 
 class BatchPersistenceService:
