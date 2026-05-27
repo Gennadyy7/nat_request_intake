@@ -28,14 +28,39 @@ class NatDedupKeyRepository(SQLAlchemyRepository[NatDedupKey, UUID]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=NatDedupKey, session=session)
 
+    async def exists_within_window(self, key: DeduplicationKey) -> bool:
+        now = datetime.now(UTC)
+        window_start = now - timedelta(minutes=settings.NAT_IDEMPOTENCY_WINDOW_MINUTES)
+        key_hash = build_key_hash(key)
+        result = await self._session.execute(
+            text(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM nat_dedup_keys
+                    WHERE key_hash = :key_hash
+                      AND created_at >= :window_start
+                )
+                """
+            ),
+            {
+                'key_hash': key_hash,
+                'window_start': window_start,
+            },
+        )
+        return bool(result.scalar_one())
+
+    async def purge_expired(self) -> None:
+        now = datetime.now(UTC)
+        window_start = now - timedelta(minutes=settings.NAT_IDEMPOTENCY_WINDOW_MINUTES)
+        await self._session.execute(
+            delete(NatDedupKey).where(NatDedupKey.created_at < window_start)
+        )
+
     async def register_if_absent(self, key: DeduplicationKey) -> bool:
         now = datetime.now(UTC)
         window_start = now - timedelta(minutes=settings.NAT_IDEMPOTENCY_WINDOW_MINUTES)
         key_hash = build_key_hash(key)
-
-        await self._session.execute(
-            delete(NatDedupKey).where(NatDedupKey.created_at < window_start)
-        )
 
         insert_stmt = text(
             """

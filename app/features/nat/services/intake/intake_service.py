@@ -158,7 +158,7 @@ class IntakeService:
                 row_errors=row_errors,
             )
 
-        deduplication_outcome = await self._deduplication.deduplicate(
+        deduplication_outcome = await self._deduplication.check_duplicates(
             validated_internal
         )
 
@@ -187,6 +187,7 @@ class IntakeService:
             )
 
         transformed_rows: list[TransformedRow] = []
+        transformed_validated_rows: list[ValidatedRow] = []
 
         for validated_row in deduplication_outcome.accepted_rows:
             transform_outcome = self._transformation.transform(validated_row)
@@ -208,6 +209,7 @@ class IntakeService:
                     transform_error.column.value if transform_error.column else None,
                 )
                 continue
+            transformed_validated_rows.append(validated_row)
             transformed_rows.extend(transform_outcome.rows)
 
         if not transformed_rows:
@@ -233,6 +235,7 @@ class IntakeService:
                 sender_email=sender_email,
                 transformed_rows=transformed_rows,
             )
+            await self._deduplication.register_accepted_rows(transformed_validated_rows)
             await self._uow.commit()
         except Exception:
             self._file_storage.delete(storage_path)
