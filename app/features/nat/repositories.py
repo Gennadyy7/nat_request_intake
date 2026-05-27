@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
@@ -23,6 +24,28 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
 class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=NatTask, session=session)
+
+    async def create_many(self, entities: Sequence[NatTask]) -> None:
+        session_id = hex(id(self._session))
+        if not entities:
+            logger.debug(
+                f'[{self._model.__name__}] Skipping create_many: no entities provided '
+                f'[Session ID: {session_id}]'
+            )
+            return
+
+        logger.debug(
+            f'[{self._model.__name__}] Adding {len(entities)} entities to identity map '
+            f'[Session ID: {session_id}]'
+        )
+        self._session.add_all(entities)
+        logger.debug(
+            f'[{self._model.__name__}] Executing flush for {len(entities)} entities'
+        )
+        await self._session.flush()
+        logger.debug(
+            f'[{self._model.__name__}] {len(entities)} entities created and flushed successfully'
+        )
 
 
 class NatDedupKeyRepository(SQLAlchemyRepository[NatDedupKey, UUID]):

@@ -30,8 +30,8 @@ class BatchPersistenceService:
         )
         await self._uow.nat_batches.create(batch)
 
-        for row in transformed_rows:
-            task = NatTask(
+        tasks = [
+            NatTask(
                 id=uuid4(),
                 batch_id=batch_id,
                 nat_request_id=None,
@@ -46,6 +46,8 @@ class BatchPersistenceService:
                 region=row.region,
                 status=NatTaskStatus.QUEUED,
             )
-            await self._uow.nat_tasks.create(task)
+            for row in transformed_rows
+        ]
+        await self._uow.nat_tasks.create_many(tasks)
 
         return batch
