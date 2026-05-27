@@ -151,7 +151,7 @@ class IntakeService:
                 validated_internal.append(outcome.validated_row)
 
         if not validated_internal:
-            return await self._reject_no_valid_rows(
+            return self._reject_no_valid_rows(
                 file_name=filename,
                 sender_email=sender_email,
                 total_data_rows=total_data_rows,
@@ -179,7 +179,7 @@ class IntakeService:
             )
 
         if not deduplication_outcome.accepted_rows:
-            return await self._reject_no_valid_rows(
+            return self._reject_no_valid_rows(
                 file_name=filename,
                 sender_email=sender_email,
                 total_data_rows=total_data_rows,
@@ -211,7 +211,7 @@ class IntakeService:
             transformed_rows.extend(transform_outcome.rows)
 
         if not transformed_rows:
-            return await self._reject_no_valid_rows(
+            return self._reject_no_valid_rows(
                 file_name=filename,
                 sender_email=sender_email,
                 total_data_rows=total_data_rows,
@@ -236,7 +236,6 @@ class IntakeService:
             await self._uow.commit()
         except Exception:
             self._file_storage.delete(storage_path)
-            await self._uow.rollback()
             logger.exception(
                 'Failed to persist intake batch: sender_email={} file_name={} batch_id={}',
                 sender_email,
@@ -267,7 +266,7 @@ class IntakeService:
             ],
         )
 
-    async def _reject_no_valid_rows(
+    def _reject_no_valid_rows(
         self,
         *,
         file_name: str,
@@ -275,7 +274,6 @@ class IntakeService:
         total_data_rows: int,
         row_errors: list[RowErrorResponse],
     ) -> IntakeResponse:
-        await self._uow.rollback()
         logger.warning(
             'File rejected: no valid rows remained after processing: sender_email={} file_name={}',
             sender_email,
