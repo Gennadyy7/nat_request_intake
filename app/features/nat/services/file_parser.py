@@ -15,7 +15,7 @@ def parse_file_content(
 ) -> ParsedFile:
     if extension == AllowedFileExtension.XLSX:
         return _parse_xlsx(content)
-    return _parse_delimited(content, settings.NAT_OUTPUT_FIELD_SEPARATOR)
+    return _parse_delimited(content, settings.NAT_INPUT_FIELD_SEPARATOR)
 
 
 def _build_parsed_row(headers: list[str], row_values: list[str]) -> ParsedRow:

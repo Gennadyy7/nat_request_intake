@@ -76,6 +76,8 @@ services:
       - "8000:8000"
     env_file:
       - ./.env
+    volumes:
+      - nat_uploads:/app/backend/uploads/nat
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 5s
@@ -89,6 +91,7 @@ services:
 volumes:
   postgres_data:
   app_postgres_data:
+  nat_uploads:
 
 networks:
   keycloak_network:

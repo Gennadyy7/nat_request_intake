@@ -1,13 +1,16 @@
+from uuid import uuid4
+
 from pydantic import EmailStr
 
 from app.core.config import settings
 from app.core.logging import get_logger
+from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.nat.constants import IntakeStatus, ValidationErrorCode
 from app.features.nat.schemas.intake import (
     FileErrorResponse,
     IntakeResponse,
     RowErrorResponse,
-    ValidatedRowResponse,
+    TransformedRowResponse,
 )
 from app.features.nat.schemas.validated_row import ValidatedRow
 from app.features.nat.services.deduplication.deduplication_service import (
@@ -20,14 +23,33 @@ from app.features.nat.services.file_gate import (
 )
 from app.features.nat.services.file_parser import parse_file_content
 from app.features.nat.services.header_validator import validate_headers
+from app.features.nat.services.persistence.batch_persistence import (
+    BatchPersistenceService,
+)
+from app.features.nat.services.persistence.file_storage import FileStorageService
 from app.features.nat.services.row_validator import validate_row
+from app.features.nat.services.transformation.transformation_service import (
+    TransformationService,
+)
+from app.features.nat.services.transformation.transformed_row import TransformedRow
 
 logger = get_logger(__name__)
 
 
 class IntakeService:
-    def __init__(self, deduplication_service: DeduplicationService) -> None:
+    def __init__(
+        self,
+        uow: UnitOfWorkProtocol,
+        deduplication_service: DeduplicationService,
+        transformation_service: TransformationService,
+        file_storage_service: FileStorageService,
+        batch_persistence_service: BatchPersistenceService,
+    ) -> None:
+        self._uow = uow
         self._deduplication = deduplication_service
+        self._transformation = transformation_service
+        self._file_storage = file_storage_service
+        self._batch_persistence = batch_persistence_service
 
     async def process(
         self,
@@ -90,7 +112,9 @@ class IntakeService:
                 error_code=ValidationErrorCode.EMPTY_FILE,
             )
 
-        if len(parsed.rows) > settings.NAT_MAX_BATCH_ROWS:
+        total_data_rows = len(parsed.rows)
+
+        if total_data_rows > settings.NAT_MAX_BATCH_ROWS:
             return self._build_file_rejection(
                 file_name=filename,
                 sender_email=sender_email,
@@ -126,6 +150,14 @@ class IntakeService:
             if outcome.validated_row is not None:
                 validated_internal.append(outcome.validated_row)
 
+        if not validated_internal:
+            return await self._reject_no_valid_rows(
+                file_name=filename,
+                sender_email=sender_email,
+                total_data_rows=total_data_rows,
+                row_errors=row_errors,
+            )
+
         deduplication_outcome = await self._deduplication.deduplicate(
             validated_internal
         )
@@ -146,43 +178,138 @@ class IntakeService:
                 dedup_error.error_code.value,
             )
 
-        validated_rows = [
-            self._to_validated_row_response(row)
-            for row in deduplication_outcome.accepted_rows
-        ]
+        if not deduplication_outcome.accepted_rows:
+            return await self._reject_no_valid_rows(
+                file_name=filename,
+                sender_email=sender_email,
+                total_data_rows=total_data_rows,
+                row_errors=row_errors,
+            )
 
-        total_data_rows = len(parsed.rows)
-        valid_rows = len(validated_rows)
-        rejected_rows = total_data_rows - valid_rows
+        transformed_rows: list[TransformedRow] = []
 
-        if rejected_rows == 0:
-            status = IntakeStatus.ACCEPTED
-        else:
-            status = IntakeStatus.PARTIALLY_ACCEPTED
+        for validated_row in deduplication_outcome.accepted_rows:
+            transform_outcome = self._transformation.transform(validated_row)
+            if transform_outcome.error is not None:
+                transform_error = transform_outcome.error
+                row_errors.append(
+                    RowErrorResponse(
+                        row_number=transform_error.row_number,
+                        error_code=transform_error.error_code,
+                        column=transform_error.column,
+                    )
+                )
+                logger.warning(
+                    'Row transformation failed: sender_email={} file_name={} row_number={} error_code={} column={}',
+                    sender_email,
+                    filename,
+                    transform_error.row_number,
+                    transform_error.error_code.value,
+                    transform_error.column.value if transform_error.column else None,
+                )
+                continue
+            transformed_rows.extend(transform_outcome.rows)
+
+        if not transformed_rows:
+            return await self._reject_no_valid_rows(
+                file_name=filename,
+                sender_email=sender_email,
+                total_data_rows=total_data_rows,
+                row_errors=row_errors,
+            )
+
+        batch_id = uuid4()
+        storage_path = self._file_storage.build_storage_path(
+            original_filename=filename,
+            batch_id=batch_id,
+        )
+
+        try:
+            await self._file_storage.save(content=content, storage_path=storage_path)
+            await self._batch_persistence.persist(
+                batch_id=batch_id,
+                storage_path=storage_path,
+                row_count=total_data_rows,
+                sender_email=sender_email,
+                transformed_rows=transformed_rows,
+            )
+            await self._uow.commit()
+        except Exception:
+            self._file_storage.delete(storage_path)
+            await self._uow.rollback()
+            logger.exception(
+                'Failed to persist intake batch: sender_email={} file_name={} batch_id={}',
+                sender_email,
+                filename,
+                batch_id,
+            )
+            raise
+
+        accepted_source_rows = {row.source_row_number for row in transformed_rows}
+        valid_rows = len(transformed_rows)
+        rejected_rows = total_data_rows - len(accepted_source_rows)
+        status = (
+            IntakeStatus.ACCEPTED if not row_errors else IntakeStatus.PARTIALLY_ACCEPTED
+        )
 
         return IntakeResponse(
             status=status,
             file_name=filename,
             sender_email=sender_email,
+            batch_id=batch_id,
             total_data_rows=total_data_rows,
             valid_rows=valid_rows,
             rejected_rows=rejected_rows,
             file_errors=[],
             row_errors=row_errors,
-            validated_rows=validated_rows,
+            validated_rows=[
+                self._to_transformed_row_response(row) for row in transformed_rows
+            ],
         )
 
-    def _to_validated_row_response(
-        self, validated_row: ValidatedRow
-    ) -> ValidatedRowResponse:
-        return ValidatedRowResponse(
-            row_number=validated_row.row_number,
-            date_from=validated_row.date_from,
-            date_to=validated_row.date_to,
-            internal_ip=validated_row.internal_ip,
-            external_ip=validated_row.external_ip,
-            resource_ip=validated_row.resource_ip,
-            region=validated_row.region,
+    async def _reject_no_valid_rows(
+        self,
+        *,
+        file_name: str,
+        sender_email: EmailStr,
+        total_data_rows: int,
+        row_errors: list[RowErrorResponse],
+    ) -> IntakeResponse:
+        await self._uow.rollback()
+        logger.warning(
+            'File rejected: no valid rows remained after processing: sender_email={} file_name={}',
+            sender_email,
+            file_name,
+        )
+        return IntakeResponse(
+            status=IntakeStatus.REJECTED,
+            file_name=file_name,
+            sender_email=sender_email,
+            batch_id=None,
+            total_data_rows=total_data_rows,
+            valid_rows=0,
+            rejected_rows=total_data_rows,
+            file_errors=[
+                FileErrorResponse(error_code=ValidationErrorCode.NO_VALID_ROWS)
+            ],
+            row_errors=row_errors,
+            validated_rows=[],
+        )
+
+    def _to_transformed_row_response(
+        self, row: TransformedRow
+    ) -> TransformedRowResponse:
+        return TransformedRowResponse(
+            row_number=row.source_row_number,
+            datetime_from=row.datetime_from,
+            datetime_to=row.datetime_to,
+            src_xlated=row.src_xlated,
+            src_port_xlated=row.src_port_xlated,
+            src=row.src,
+            src_port=row.src_port,
+            dst=row.dst,
+            dst_port=row.dst_port,
+            region=row.region,
         )
 
     def _build_file_rejection(
@@ -202,6 +329,7 @@ class IntakeService:
             status=IntakeStatus.REJECTED,
             file_name=file_name,
             sender_email=sender_email,
+            batch_id=None,
             total_data_rows=0,
             valid_rows=0,
             rejected_rows=0,

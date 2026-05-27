@@ -46,8 +46,9 @@ class Settings(BaseSettings):
     NAT_MAX_BATCH_ROWS: int = Field(ge=1)
     NAT_IDEMPOTENCY_WINDOW_MINUTES: int = Field(ge=1)
     NAT_OUTPUT_DATETIME_FORMAT: str
-    NAT_OUTPUT_FIELD_SEPARATOR: str
+    NAT_INPUT_FIELD_SEPARATOR: str
     NAT_MISSING_FIELD_PLACEHOLDER: str
+    NAT_UPLOAD_BASE_DIR: str = 'backend/uploads/nat'
     NAT_MAX_EXPANSION_PER_FIELD: int = Field(default=256, ge=1)
     NAT_MAX_TOTAL_EXPANSION_PRODUCT: int = Field(default=256, ge=1)
     nat_cidr_allowed_fields_env: str = Field(

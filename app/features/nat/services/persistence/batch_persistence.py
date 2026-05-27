@@ -1,0 +1,51 @@
+from collections.abc import Sequence
+from uuid import UUID, uuid4
+
+from pydantic import EmailStr
+
+from app.core.unit_of_work.protocol import UnitOfWorkProtocol
+from app.features.nat.constants import NatTaskStatus
+from app.features.nat.models import NatBatch, NatTask
+from app.features.nat.services.transformation.transformed_row import TransformedRow
+
+
+class BatchPersistenceService:
+    def __init__(self, uow: UnitOfWorkProtocol) -> None:
+        self._uow = uow
+
+    async def persist(
+        self,
+        *,
+        batch_id: UUID,
+        storage_path: str,
+        row_count: int,
+        sender_email: EmailStr,
+        transformed_rows: Sequence[TransformedRow],
+    ) -> NatBatch:
+        batch = NatBatch(
+            id=batch_id,
+            file_name=storage_path,
+            row_count=row_count,
+            sender_email=str(sender_email),
+        )
+        await self._uow.nat_batches.create(batch)
+
+        for row in transformed_rows:
+            task = NatTask(
+                id=uuid4(),
+                batch_id=batch_id,
+                nat_request_id=None,
+                datetime_from=row.datetime_from,
+                datetime_to=row.datetime_to,
+                src_xlated=row.src_xlated,
+                src_port_xlated=row.src_port_xlated,
+                src=row.src,
+                src_port=row.src_port,
+                dst=row.dst,
+                dst_port=row.dst_port,
+                region=row.region,
+                status=NatTaskStatus.QUEUED,
+            )
+            await self._uow.nat_tasks.create(task)
+
+        return batch

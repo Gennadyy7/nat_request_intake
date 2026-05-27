@@ -40,10 +40,20 @@ class ValidationErrorCode(StrEnum):
     IP_NOT_BELTELECOM = 'IP_NOT_BELTELECOM'
     INVALID_PORT = 'INVALID_PORT'
     INVALID_REGION = 'INVALID_REGION'
+    NO_VALID_ROWS = 'NO_VALID_ROWS'
 
 
 class DeduplicationErrorCode(StrEnum):
     DUPLICATE_REQUEST = 'DUPLICATE_REQUEST'
+
+
+class TransformationErrorCode(StrEnum):
+    EXPANSION_LIMIT_EXCEEDED = 'EXPANSION_LIMIT_EXCEEDED'
+
+
+type RowErrorCode = (
+    ValidationErrorCode | DeduplicationErrorCode | TransformationErrorCode
+)
 
 
 class NatRegionCode(StrEnum):

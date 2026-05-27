@@ -21,6 +21,7 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_batches: NatBatchRepository | None = None
         self._nat_tasks: NatTaskRepository | None = None
         self._nat_dedup_keys: NatDedupKeyRepository | None = None
+        self._committed = False
         logger.debug('SQLAlchemyUnitOfWork initialized with session factory')
 
     @property
@@ -66,6 +67,7 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_batches = NatBatchRepository(self._session)
         self._nat_tasks = NatTaskRepository(self._session)
         self._nat_dedup_keys = NatDedupKeyRepository(self._session)
+        self._committed = False
         logger.debug('NatBatch, NatTask and NatDedupKey repositories initialized')
         return self
 
@@ -84,11 +86,12 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
                     f'Type: {exc_type.__name__}, Value: {exc_val}. Triggering rollback.'
                 )
                 await self.rollback()
-            else:
+            elif not self._committed:
                 logger.debug(
-                    f'No exceptions detected. Triggering commit for Session ID: {session_id}'
+                    f'UnitOfWork exiting without commit for Session ID: {session_id}. '
+                    'Triggering rollback.'
                 )
-                await self.commit()
+                await self.rollback()
         finally:
             assert self._session is not None
             logger.debug(f'Closing database session. Session ID: {session_id}')
@@ -100,6 +103,7 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
             session_id = hex(id(self._session))
             logger.debug(f'Executing SQL COMMIT for Session ID: {session_id}')
             await self._session.commit()
+            self._committed = True
             logger.debug(
                 f'SQL COMMIT executed successfully for Session ID: {session_id}'
             )

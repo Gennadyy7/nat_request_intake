@@ -3,15 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import (
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-    UniqueConstraint,
-    text,
-)
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
@@ -38,7 +30,7 @@ class NatBatch(Base, TimestampMixin):
     row_count: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
-        comment='Number of rows in CSV file (excluding header)',
+        comment='Number of rows in file (excluding header)',
     )
 
     sender_email: Mapped[str] = mapped_column(
@@ -53,7 +45,7 @@ class NatBatch(Base, TimestampMixin):
         back_populates='batch',
         cascade='all, delete-orphan',
         lazy='selectin',
-        order_by='NatTask.row_index',
+        order_by='NatTask.created_at',
     )
 
     __table_args__ = (
@@ -113,11 +105,11 @@ class NatBatch(Base, TimestampMixin):
 class NatTask(Base, TimestampMixin):
     __tablename__ = 'nat_tasks'
 
-    id: Mapped[int] = mapped_column(
-        Integer,
+    id: Mapped[UUID] = mapped_column(
         primary_key=True,
-        autoincrement=False,
-        comment='NAT API request ID (returned after ACTION=send). Used for polling.',
+        default=uuid4,
+        index=True,
+        comment='Primary key (UUID v4, generated automatically)',
     )
 
     batch_id: Mapped[UUID] = mapped_column(
@@ -131,10 +123,65 @@ class NatTask(Base, TimestampMixin):
         comment='Foreign key to parent NatBatch',
     )
 
-    row_index: Mapped[int] = mapped_column(
+    nat_request_id: Mapped[int | None] = mapped_column(
         Integer,
+        nullable=True,
+        index=True,
+        comment='NAT API request ID (returned after ACTION=send). Used for polling.',
+    )
+
+    datetime_from: Mapped[str] = mapped_column(
+        String(32),
         nullable=False,
-        comment='Zero-based row index in the parent batch CSV file (excluding header)',
+        comment='Start datetime for NAT request (dd.mm.yyyy hh:mm:ss)',
+    )
+
+    datetime_to: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        comment='End datetime for NAT request (dd.mm.yyyy hh:mm:ss)',
+    )
+
+    src_xlated: Mapped[str] = mapped_column(
+        String(45),
+        nullable=False,
+        comment='External source IPv4 for NAT request',
+    )
+
+    src_port_xlated: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment='External source port for NAT request',
+    )
+
+    src: Mapped[str] = mapped_column(
+        String(45),
+        nullable=False,
+        comment='Internal source IPv4 for NAT request',
+    )
+
+    src_port: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment='Internal source port for NAT request',
+    )
+
+    dst: Mapped[str] = mapped_column(
+        String(45),
+        nullable=False,
+        comment='Destination IPv4 for NAT request',
+    )
+
+    dst_port: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment='Destination port for NAT request',
+    )
+
+    region: Mapped[str] = mapped_column(
+        String(8),
+        nullable=False,
+        comment='Region code for NAT request (1-8 or placeholder)',
     )
 
     status: Mapped[int] = mapped_column(
@@ -176,24 +223,12 @@ class NatTask(Base, TimestampMixin):
         comment='Error description if task failed',
     )
 
-    retry_count: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
-        comment='Number of retry attempts',
-    )
-
     batch: Mapped[NatBatch] = relationship(
         'NatBatch',
         back_populates='tasks',
     )
 
     __table_args__ = (
-        UniqueConstraint(
-            'batch_id',
-            'row_index',
-            name='uq_nat_tasks_batch_id_row_index',
-        ),
         {
             'comment': 'Individual NAT tasks for each request in a batch file',
         },
@@ -203,9 +238,9 @@ class NatTask(Base, TimestampMixin):
         return (
             f'NatTask('
             f'id={self.id}, '
+            f'nat_request_id={self.nat_request_id}, '
             f'status={self.status}, '
-            f'batch_id={self.batch_id}, '
-            f'row_index={self.row_index})'
+            f'batch_id={self.batch_id})'
         )
 
     @property
@@ -230,10 +265,6 @@ class NatTask(Base, TimestampMixin):
     @property
     def is_completed(self) -> bool:
         return self.status == NatTaskStatus.COMPLETED
-
-    @property
-    def can_retry(self) -> bool:
-        return self.is_error_state and self.retry_count < 3
 
 
 class NatDedupKey(Base, TimestampMixin):
