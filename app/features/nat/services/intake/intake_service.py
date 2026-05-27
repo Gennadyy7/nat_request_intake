@@ -220,6 +220,43 @@ class IntakeService:
                 row_errors=row_errors,
             )
 
+        registration_outcome = await self._deduplication.register_accepted_rows(
+            transformed_validated_rows
+        )
+
+        for registration_error in registration_outcome.errors:
+            row_errors.append(
+                RowErrorResponse(
+                    row_number=registration_error.row_number,
+                    error_code=registration_error.error_code,
+                    column=None,
+                )
+            )
+            logger.warning(
+                'Duplicate row detected at registration: sender_email={} file_name={} row_number={} error_code={}',
+                sender_email,
+                filename,
+                registration_error.row_number,
+                registration_error.error_code.value,
+            )
+
+        if not registration_outcome.registered_rows:
+            return self._reject_no_valid_rows(
+                file_name=filename,
+                sender_email=sender_email,
+                total_data_rows=total_data_rows,
+                row_errors=row_errors,
+            )
+
+        registered_row_numbers = {
+            row.row_number for row in registration_outcome.registered_rows
+        }
+        transformed_rows = [
+            row
+            for row in transformed_rows
+            if row.source_row_number in registered_row_numbers
+        ]
+
         batch_id = uuid4()
         storage_path = self._file_storage.build_storage_path(
             original_filename=filename,
@@ -235,7 +272,6 @@ class IntakeService:
                 sender_email=sender_email,
                 transformed_rows=transformed_rows,
             )
-            await self._deduplication.register_accepted_rows(transformed_validated_rows)
             await self._uow.commit()
         except Exception:
             self._file_storage.delete(storage_path)

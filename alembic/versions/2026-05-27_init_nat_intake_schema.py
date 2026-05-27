@@ -1,8 +1,8 @@
-"""init_nat_batch_and_task_tables
+"""init_nat_intake_schema
 
-Revision ID: 27baeba919ff
+Revision ID: 0926cf847969
 Revises:
-Create Date: 2026-05-25 17:02:54.798547
+Create Date: 2026-05-27 21:45:34.465370
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '27baeba919ff'
+revision: str = '0926cf847969'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -40,7 +40,7 @@ def upgrade() -> None:
             'row_count',
             sa.Integer(),
             nullable=False,
-            comment='Number of rows in CSV file (excluding header)',
+            comment='Number of rows in file (excluding header)',
         ),
         sa.Column(
             'sender_email',
@@ -74,13 +74,78 @@ def upgrade() -> None:
         unique=False,
     )
     op.create_table(
+        'nat_dedup_keys',
+        sa.Column(
+            'id',
+            sa.Uuid(),
+            nullable=False,
+            comment='Primary key (UUID v4, generated automatically)',
+        ),
+        sa.Column(
+            'key_hash',
+            sa.String(length=64),
+            nullable=False,
+            comment='SHA-256 hash of the deduplication key fields',
+        ),
+        sa.Column(
+            'date_from',
+            sa.DateTime(timezone=True),
+            nullable=False,
+            comment='Start datetime from the deduplication key',
+        ),
+        sa.Column(
+            'date_to',
+            sa.DateTime(timezone=True),
+            nullable=False,
+            comment='End datetime from the deduplication key',
+        ),
+        sa.Column(
+            'internal_ip',
+            sa.String(length=45),
+            nullable=True,
+            comment='Internal IP from the deduplication key',
+        ),
+        sa.Column(
+            'external_ip',
+            sa.String(length=45),
+            nullable=True,
+            comment='External IP from the deduplication key',
+        ),
+        sa.Column(
+            'resource_ip',
+            sa.String(length=45),
+            nullable=True,
+            comment='Resource IP from the deduplication key',
+        ),
+        sa.Column(
+            'region',
+            sa.String(length=8),
+            nullable=True,
+            comment='Region code from the deduplication key',
+        ),
+        sa.Column(
+            'created_at',
+            sa.DateTime(timezone=True),
+            server_default=sa.text('now()'),
+            nullable=False,
+        ),
+        sa.Column(
+            'updated_at',
+            sa.DateTime(timezone=True),
+            server_default=sa.text('now()'),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint('id', name=op.f('pk_nat_dedup_keys')),
+        sa.UniqueConstraint('key_hash', name=op.f('uq_nat_dedup_keys_key_hash')),
+        comment='Registered deduplication keys for idempotency window tracking',
+    )
+    op.create_table(
         'nat_tasks',
         sa.Column(
             'id',
-            sa.Integer(),
-            autoincrement=False,
+            sa.Uuid(),
             nullable=False,
-            comment='NAT API request ID (returned after ACTION=send). Used for polling.',
+            comment='Primary key (UUID v4, generated automatically)',
         ),
         sa.Column(
             'batch_id',
@@ -89,10 +154,64 @@ def upgrade() -> None:
             comment='Foreign key to parent NatBatch',
         ),
         sa.Column(
-            'row_index',
+            'nat_request_id',
             sa.Integer(),
+            nullable=True,
+            comment='NAT API request ID (returned after ACTION=send). Used for polling.',
+        ),
+        sa.Column(
+            'datetime_from',
+            sa.String(length=32),
             nullable=False,
-            comment='Zero-based row index in the parent batch CSV file (excluding header)',
+            comment='Start datetime for NAT request (dd.mm.yyyy hh:mm:ss)',
+        ),
+        sa.Column(
+            'datetime_to',
+            sa.String(length=32),
+            nullable=False,
+            comment='End datetime for NAT request (dd.mm.yyyy hh:mm:ss)',
+        ),
+        sa.Column(
+            'src_xlated',
+            sa.String(length=45),
+            nullable=False,
+            comment='External source IPv4 for NAT request',
+        ),
+        sa.Column(
+            'src_port_xlated',
+            sa.Integer(),
+            nullable=True,
+            comment='External source port for NAT request',
+        ),
+        sa.Column(
+            'src',
+            sa.String(length=45),
+            nullable=False,
+            comment='Internal source IPv4 for NAT request',
+        ),
+        sa.Column(
+            'src_port',
+            sa.Integer(),
+            nullable=True,
+            comment='Internal source port for NAT request',
+        ),
+        sa.Column(
+            'dst',
+            sa.String(length=45),
+            nullable=False,
+            comment='Destination IPv4 for NAT request',
+        ),
+        sa.Column(
+            'dst_port',
+            sa.Integer(),
+            nullable=True,
+            comment='Destination port for NAT request',
+        ),
+        sa.Column(
+            'region',
+            sa.String(length=8),
+            nullable=False,
+            comment='Region code for NAT request (1-8 or placeholder)',
         ),
         sa.Column(
             'status',
@@ -132,12 +251,6 @@ def upgrade() -> None:
             comment='Error description if task failed',
         ),
         sa.Column(
-            'retry_count',
-            sa.Integer(),
-            nullable=False,
-            comment='Number of retry attempts',
-        ),
-        sa.Column(
             'created_at',
             sa.DateTime(timezone=True),
             server_default=sa.text('now()'),
@@ -156,13 +269,17 @@ def upgrade() -> None:
             ondelete='CASCADE',
         ),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_nat_tasks')),
-        sa.UniqueConstraint(
-            'batch_id', 'row_index', name='uq_nat_tasks_batch_id_row_index'
-        ),
         comment='Individual NAT tasks for each request in a batch file',
     )
     op.create_index(
         op.f('ix_nat_tasks_batch_id'), 'nat_tasks', ['batch_id'], unique=False
+    )
+    op.create_index(op.f('ix_nat_tasks_id'), 'nat_tasks', ['id'], unique=False)
+    op.create_index(
+        op.f('ix_nat_tasks_nat_request_id'),
+        'nat_tasks',
+        ['nat_request_id'],
+        unique=False,
     )
     op.create_index(op.f('ix_nat_tasks_status'), 'nat_tasks', ['status'], unique=False)
     # ### end Alembic commands ###
@@ -172,8 +289,11 @@ def downgrade() -> None:
     """Downgrade schema."""
     # ### commands auto generated by Alembic - please adjust! ###
     op.drop_index(op.f('ix_nat_tasks_status'), table_name='nat_tasks')
+    op.drop_index(op.f('ix_nat_tasks_nat_request_id'), table_name='nat_tasks')
+    op.drop_index(op.f('ix_nat_tasks_id'), table_name='nat_tasks')
     op.drop_index(op.f('ix_nat_tasks_batch_id'), table_name='nat_tasks')
     op.drop_table('nat_tasks')
+    op.drop_table('nat_dedup_keys')
     op.drop_index(op.f('ix_nat_batches_sender_email'), table_name='nat_batches')
     op.drop_index(op.f('ix_nat_batches_id'), table_name='nat_batches')
     op.drop_index(op.f('ix_nat_batches_file_name'), table_name='nat_batches')

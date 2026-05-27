@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from sqlalchemy import delete, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -96,23 +97,33 @@ class NatDedupKeyRepository(SQLAlchemyRepository[NatDedupKey, UUID]):
             RETURNING id
             """
         )
-        result = await self._session.execute(
-            insert_stmt,
-            {
-                'id': uuid4(),
-                'key_hash_insert': key_hash,
-                'key_hash_lookup': key_hash,
-                'date_from': key.date_from,
-                'date_to': key.date_to,
-                'internal_ip': key.internal_ip,
-                'external_ip': key.external_ip,
-                'resource_ip': key.resource_ip,
-                'region': key.region.value if key.region is not None else None,
-                'created_at': now,
-                'updated_at': now,
-                'window_start': window_start,
-            },
-        )
+        try:
+            async with self._session.begin_nested():
+                result = await self._session.execute(
+                    insert_stmt,
+                    {
+                        'id': uuid4(),
+                        'key_hash_insert': key_hash,
+                        'key_hash_lookup': key_hash,
+                        'date_from': key.date_from,
+                        'date_to': key.date_to,
+                        'internal_ip': key.internal_ip,
+                        'external_ip': key.external_ip,
+                        'resource_ip': key.resource_ip,
+                        'region': key.region.value if key.region is not None else None,
+                        'created_at': now,
+                        'updated_at': now,
+                        'window_start': window_start,
+                    },
+                )
+                await self._session.flush()
+        except IntegrityError:
+            logger.debug(
+                'Deduplication key registration conflict: key_hash={}',
+                key_hash,
+            )
+            return False
+
         inserted_id = result.scalar_one_or_none()
         registered = inserted_id is not None
         logger.debug(

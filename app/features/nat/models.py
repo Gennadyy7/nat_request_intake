@@ -279,7 +279,7 @@ class NatDedupKey(Base, TimestampMixin):
     key_hash: Mapped[str] = mapped_column(
         String(64),
         nullable=False,
-        index=True,
+        unique=True,
         comment='SHA-256 hash of the deduplication key fields',
     )
 

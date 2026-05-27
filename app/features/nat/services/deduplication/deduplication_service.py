@@ -22,6 +22,12 @@ class DeduplicationOutcome:
     errors: tuple[DeduplicationRowError, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class DeduplicationRegistrationOutcome:
+    registered_rows: tuple[ValidatedRow, ...]
+    errors: tuple[DeduplicationRowError, ...]
+
+
 class DeduplicationService:
     def __init__(self, uow: UnitOfWorkProtocol) -> None:
         self._uow = uow
@@ -67,12 +73,34 @@ class DeduplicationService:
     async def register_accepted_rows(
         self,
         rows: Sequence[ValidatedRow],
-    ) -> None:
+    ) -> DeduplicationRegistrationOutcome:
         if not rows:
-            return
+            return DeduplicationRegistrationOutcome(
+                registered_rows=(),
+                errors=(),
+            )
 
         await self._uow.nat_dedup_keys.purge_expired()
 
+        registered_rows: list[ValidatedRow] = []
+        errors: list[DeduplicationRowError] = []
+
         for row in rows:
             deduplication_key = build_deduplication_key(row)
-            await self._uow.nat_dedup_keys.register_if_absent(deduplication_key)
+            registered = await self._uow.nat_dedup_keys.register_if_absent(
+                deduplication_key
+            )
+            if registered:
+                registered_rows.append(row)
+            else:
+                errors.append(
+                    DeduplicationRowError(
+                        row_number=row.row_number,
+                        error_code=DeduplicationErrorCode.DUPLICATE_REQUEST,
+                    )
+                )
+
+        return DeduplicationRegistrationOutcome(
+            registered_rows=tuple(registered_rows),
+            errors=tuple(errors),
+        )
