@@ -4,11 +4,19 @@ from typing import Protocol, Self
 from app.features.nat.repositories import (
     NatBatchRepository,
     NatDedupKeyRepository,
+    NatIntakeRepository,
+    NatIntakeRowErrorRepository,
     NatTaskRepository,
 )
 
 
 class UnitOfWorkProtocol(Protocol):
+    @property
+    def nat_intakes(self) -> NatIntakeRepository: ...
+
+    @property
+    def nat_intake_row_errors(self) -> NatIntakeRowErrorRepository: ...
+
     @property
     def nat_batches(self) -> NatBatchRepository: ...
 

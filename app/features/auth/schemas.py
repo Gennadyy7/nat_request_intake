@@ -2,6 +2,12 @@ from typing import Self, cast
 
 from pydantic import BaseModel, EmailStr
 
+from app.features.auth.constants import AuthErrorCode
+
+
+class AuthErrorResponse(BaseModel):
+    error_code: AuthErrorCode
+
 
 class User(BaseModel):
     id: str

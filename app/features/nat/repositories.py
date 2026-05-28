@@ -2,23 +2,221 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import Label
 
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.repositories.sqlalchemy import SQLAlchemyRepository
 from app.features.nat.domain.deduplication_key import DeduplicationKey
-from app.features.nat.models import NatBatch, NatDedupKey, NatTask
+from app.features.nat.models import (
+    NatBatch,
+    NatDedupKey,
+    NatIntake,
+    NatIntakeRowError,
+    NatTask,
+)
+from app.features.nat.query_params import (
+    NatBatchFilters,
+    NatIntakeFilters,
+    NatTaskFilters,
+    SortOrder,
+    SortParams,
+)
+from app.features.nat.repository_query import (
+    batch_sort_column,
+    build_batch_filter_clauses,
+    build_intake_filter_clauses,
+    build_task_filter_clauses,
+    intake_sort_column,
+    order_by_sort_column,
+    row_error_sort_expression,
+    task_sort_column,
+)
+from app.features.nat.repository_records import (
+    NatBatchDetailRecord,
+    NatBatchListRecord,
+    NatIntakeListRecord,
+)
 from app.features.nat.services.deduplication.deduplication_key import build_key_hash
 
 logger = get_logger(__name__)
 
 
+class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(model=NatIntake, session=session)
+
+    async def count_filtered(self, filters: NatIntakeFilters) -> int:
+        clauses = build_intake_filter_clauses(filters)
+        statement = select(func.count()).select_from(NatIntake)
+        if clauses:
+            statement = statement.where(*clauses)
+        result = await self._session.execute(statement)
+        return int(result.scalar_one())
+
+    async def list_filtered(
+        self,
+        filters: NatIntakeFilters,
+        sort: SortParams,
+        limit: int,
+        offset: int,
+    ) -> Sequence[NatIntakeListRecord]:
+        clauses = build_intake_filter_clauses(filters)
+        statement = (
+            select(NatIntake, NatBatch.id)
+            .outerjoin(NatBatch, NatBatch.intake_id == NatIntake.id)
+            .order_by(order_by_sort_column(intake_sort_column(sort), sort.sort_order))
+            .limit(limit)
+            .offset(offset)
+        )
+        if clauses:
+            statement = statement.where(*clauses)
+        result = await self._session.execute(statement)
+        return [
+            NatIntakeListRecord(intake=intake, batch_id=batch_id)
+            for intake, batch_id in result.all()
+        ]
+
+    async def get_list_record_by_id(
+        self,
+        intake_id: UUID,
+    ) -> NatIntakeListRecord | None:
+        statement = (
+            select(NatIntake, NatBatch.id)
+            .outerjoin(NatBatch, NatBatch.intake_id == NatIntake.id)
+            .where(NatIntake.id == intake_id)
+        )
+        result = await self._session.execute(statement)
+        row = result.one_or_none()
+        if row is None:
+            return None
+        intake, batch_id = row
+        return NatIntakeListRecord(intake=intake, batch_id=batch_id)
+
+
+class NatIntakeRowErrorRepository(SQLAlchemyRepository[NatIntakeRowError, UUID]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(model=NatIntakeRowError, session=session)
+
+    async def create_many(self, entities: Sequence[NatIntakeRowError]) -> None:
+        if not entities:
+            return
+        self._session.add_all(entities)
+        await self._session.flush()
+
+    async def count_by_intake_id(self, intake_id: UUID) -> int:
+        statement = (
+            select(func.count())
+            .select_from(NatIntakeRowError)
+            .where(NatIntakeRowError.intake_id == intake_id)
+        )
+        result = await self._session.execute(statement)
+        return int(result.scalar_one())
+
+    async def list_by_intake_id(
+        self,
+        intake_id: UUID,
+        *,
+        limit: int,
+        offset: int,
+        sort_order: SortOrder = 'asc',
+    ) -> Sequence[NatIntakeRowError]:
+        statement = (
+            select(NatIntakeRowError)
+            .where(NatIntakeRowError.intake_id == intake_id)
+            .order_by(row_error_sort_expression(sort_order))
+            .limit(limit)
+            .offset(offset)
+        )
+        result = await self._session.execute(statement)
+        return list(result.scalars().all())
+
+
 class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=NatBatch, session=session)
+
+    def _tasks_count_subquery(self) -> Label[int]:
+        return (
+            select(func.count(NatTask.id))
+            .where(NatTask.batch_id == NatBatch.id)
+            .correlate(NatBatch)
+            .scalar_subquery()
+            .label('tasks_count')
+        )
+
+    async def count_filtered(self, filters: NatBatchFilters) -> int:
+        clauses = build_batch_filter_clauses(filters)
+        statement = (
+            select(func.count())
+            .select_from(NatBatch)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
+        )
+        if clauses:
+            statement = statement.where(*clauses)
+        result = await self._session.execute(statement)
+        return int(result.scalar_one())
+
+    async def list_filtered(
+        self,
+        filters: NatBatchFilters,
+        sort: SortParams,
+        limit: int,
+        offset: int,
+    ) -> Sequence[NatBatchListRecord]:
+        clauses = build_batch_filter_clauses(filters)
+        tasks_count = self._tasks_count_subquery()
+        statement = (
+            select(
+                NatBatch,
+                NatIntake.sender_email,
+                NatIntake.file_name,
+                tasks_count,
+            )
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
+            .order_by(order_by_sort_column(batch_sort_column(sort), sort.sort_order))
+            .limit(limit)
+            .offset(offset)
+        )
+        if clauses:
+            statement = statement.where(*clauses)
+        result = await self._session.execute(statement)
+        return [
+            NatBatchListRecord(
+                batch=batch,
+                sender_email=sender_email,
+                original_file_name=original_file_name,
+                tasks_count=int(tasks_count_value),
+            )
+            for batch, sender_email, original_file_name, tasks_count_value in result.all()
+        ]
+
+    async def get_detail_by_id(self, batch_id: UUID) -> NatBatchDetailRecord | None:
+        tasks_count = self._tasks_count_subquery()
+        statement = (
+            select(
+                NatBatch,
+                NatIntake.sender_email,
+                NatIntake.file_name,
+                tasks_count,
+            )
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
+            .where(NatBatch.id == batch_id)
+        )
+        result = await self._session.execute(statement)
+        row = result.one_or_none()
+        if row is None:
+            return None
+        batch, sender_email, original_file_name, tasks_count_value = row
+        return NatBatchDetailRecord(
+            batch=batch,
+            sender_email=sender_email,
+            original_file_name=original_file_name,
+            tasks_count=int(tasks_count_value),
+        )
 
 
 class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
@@ -46,6 +244,33 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
         logger.debug(
             f'[{self._model.__name__}] {len(entities)} entities created and flushed successfully'
         )
+
+    async def count_filtered(self, filters: NatTaskFilters) -> int:
+        clauses = build_task_filter_clauses(filters)
+        statement = select(func.count()).select_from(NatTask)
+        if clauses:
+            statement = statement.where(*clauses)
+        result = await self._session.execute(statement)
+        return int(result.scalar_one())
+
+    async def list_filtered(
+        self,
+        filters: NatTaskFilters,
+        sort: SortParams,
+        limit: int,
+        offset: int,
+    ) -> Sequence[NatTask]:
+        clauses = build_task_filter_clauses(filters)
+        statement = (
+            select(NatTask)
+            .order_by(order_by_sort_column(task_sort_column(sort), sort.sort_order))
+            .limit(limit)
+            .offset(offset)
+        )
+        if clauses:
+            statement = statement.where(*clauses)
+        result = await self._session.execute(statement)
+        return list(result.scalars().all())
 
 
 class NatDedupKeyRepository(SQLAlchemyRepository[NatDedupKey, UUID]):

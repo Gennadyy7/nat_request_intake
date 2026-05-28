@@ -8,6 +8,8 @@ from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.nat.repositories import (
     NatBatchRepository,
     NatDedupKeyRepository,
+    NatIntakeRepository,
+    NatIntakeRowErrorRepository,
     NatTaskRepository,
 )
 
@@ -18,11 +20,35 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
     def __init__(self, session_factory: async_sessionmaker[AsyncSession]):
         self._session_factory = session_factory
         self._session: AsyncSession | None = None
+        self._nat_intakes: NatIntakeRepository | None = None
+        self._nat_intake_row_errors: NatIntakeRowErrorRepository | None = None
         self._nat_batches: NatBatchRepository | None = None
         self._nat_tasks: NatTaskRepository | None = None
         self._nat_dedup_keys: NatDedupKeyRepository | None = None
         self._committed = False
         logger.debug('SQLAlchemyUnitOfWork initialized with session factory')
+
+    @property
+    def nat_intakes(self) -> NatIntakeRepository:
+        if self._nat_intakes is None:
+            logger.error(
+                'Attempted to access nat_intakes repository outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._nat_intakes
+
+    @property
+    def nat_intake_row_errors(self) -> NatIntakeRowErrorRepository:
+        if self._nat_intake_row_errors is None:
+            logger.error(
+                'Attempted to access nat_intake_row_errors repository outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._nat_intake_row_errors
 
     @property
     def nat_batches(self) -> NatBatchRepository:
@@ -64,11 +90,15 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         logger.debug(
             f'Database session opened successfully. Session ID: {hex(id(self._session))}'
         )
+        self._nat_intakes = NatIntakeRepository(self._session)
+        self._nat_intake_row_errors = NatIntakeRowErrorRepository(self._session)
         self._nat_batches = NatBatchRepository(self._session)
         self._nat_tasks = NatTaskRepository(self._session)
         self._nat_dedup_keys = NatDedupKeyRepository(self._session)
         self._committed = False
-        logger.debug('NatBatch, NatTask and NatDedupKey repositories initialized')
+        logger.debug(
+            'NatIntake, NatIntakeRowError, NatBatch, NatTask and NatDedupKey repositories initialized'
+        )
         return self
 
     async def __aexit__(

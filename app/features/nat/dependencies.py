@@ -8,6 +8,9 @@ from app.features.nat.services.deduplication.deduplication_service import (
     DeduplicationService,
 )
 from app.features.nat.services.intake.intake_service import IntakeService
+from app.features.nat.services.listing.batch_query_service import BatchQueryService
+from app.features.nat.services.listing.intake_query_service import IntakeQueryService
+from app.features.nat.services.listing.task_query_service import TaskQueryService
 from app.features.nat.services.persistence.batch_persistence import (
     BatchPersistenceService,
 )
@@ -63,3 +66,21 @@ def get_intake_service(
         file_storage_service=file_storage_service,
         batch_persistence_service=batch_persistence_service,
     )
+
+
+def get_intake_query_service(
+    uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
+) -> IntakeQueryService:
+    return IntakeQueryService(uow=uow)
+
+
+def get_batch_query_service(
+    uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
+) -> BatchQueryService:
+    return BatchQueryService(uow=uow)
+
+
+def get_task_query_service(
+    uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
+) -> TaskQueryService:
+    return TaskQueryService(uow=uow)

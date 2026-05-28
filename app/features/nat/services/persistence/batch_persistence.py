@@ -1,8 +1,6 @@
 from collections.abc import Sequence
 from uuid import UUID, uuid4
 
-from pydantic import EmailStr
-
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.nat.constants import NatTaskStatus
 from app.features.nat.domain.transformed_row import TransformedRow
@@ -16,17 +14,17 @@ class BatchPersistenceService:
     async def persist(
         self,
         *,
+        intake_id: UUID,
         batch_id: UUID,
         storage_path: str,
         row_count: int,
-        sender_email: EmailStr,
         transformed_rows: Sequence[TransformedRow],
     ) -> NatBatch:
         batch = NatBatch(
             id=batch_id,
+            intake_id=intake_id,
             file_name=storage_path,
             row_count=row_count,
-            sender_email=str(sender_email),
         )
         await self._uow.nat_batches.create(batch)
 

@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     DB_POOL_RECYCLE: int = 3600
     DB_ECHO: bool = False
 
+    API_PAGINATION_DEFAULT_LIMIT: int = Field(ge=1)
+    API_PAGINATION_MAX_LIMIT: int = Field(ge=1)
+
     NAT_MAX_BATCH_ROWS: int = Field(ge=1)
     NAT_IDEMPOTENCY_WINDOW_MINUTES: int = Field(ge=1)
     NAT_OUTPUT_DATETIME_FORMAT: str
@@ -105,6 +108,15 @@ class Settings(BaseSettings):
                 f'Required environment variables: {", ".join(missing)}'
             )
 
+        return self
+
+    @model_validator(mode='after')
+    def validate_pagination_limits(self) -> Self:
+        if self.API_PAGINATION_MAX_LIMIT < self.API_PAGINATION_DEFAULT_LIMIT:
+            raise ValueError(
+                'API_PAGINATION_MAX_LIMIT must be greater than or equal to '
+                'API_PAGINATION_DEFAULT_LIMIT'
+            )
         return self
 
     @property
