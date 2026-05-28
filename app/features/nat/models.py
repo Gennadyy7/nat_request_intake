@@ -64,43 +64,6 @@ class NatBatch(Base, TimestampMixin):
             f'tasks_count={len(self.tasks)})'
         )
 
-    @property
-    def completed_count(self) -> int:
-        return sum(1 for task in self.tasks if task.status == NatTaskStatus.COMPLETED)
-
-    @property
-    def failed_count(self) -> int:
-        return sum(
-            1
-            for task in self.tasks
-            if task.status == NatTaskStatus.CANCELLED
-            or (
-                task.status
-                not in (
-                    NatTaskStatus.COMPLETED,
-                    NatTaskStatus.IN_PROGRESS,
-                    NatTaskStatus.LAUNCHED,
-                    NatTaskStatus.QUEUED,
-                )
-            )
-        )
-
-    @property
-    def progress_percentage(self) -> float:
-        if not self.tasks:
-            return 0.0
-        return (self.completed_count / len(self.tasks)) * 100
-
-    @property
-    def is_fully_processed(self) -> bool:
-        if not self.tasks:
-            return False
-        terminal_states = (
-            NatTaskStatus.COMPLETED,
-            NatTaskStatus.CANCELLED,
-        )
-        return all(task.status in terminal_states for task in self.tasks)
-
 
 class NatTask(Base, TimestampMixin):
     __tablename__ = 'nat_tasks'
@@ -242,29 +205,6 @@ class NatTask(Base, TimestampMixin):
             f'status={self.status}, '
             f'batch_id={self.batch_id})'
         )
-
-    @property
-    def is_terminal_state(self) -> bool:
-        return self.status in (
-            NatTaskStatus.COMPLETED,
-            NatTaskStatus.CANCELLED,
-        )
-
-    @property
-    def is_error_state(self) -> bool:
-        if self.status == NatTaskStatus.CANCELLED:
-            return True
-        valid_states = (
-            NatTaskStatus.QUEUED,
-            NatTaskStatus.LAUNCHED,
-            NatTaskStatus.IN_PROGRESS,
-            NatTaskStatus.COMPLETED,
-        )
-        return self.status not in valid_states
-
-    @property
-    def is_completed(self) -> bool:
-        return self.status == NatTaskStatus.COMPLETED
 
 
 class NatDedupKey(Base, TimestampMixin):
