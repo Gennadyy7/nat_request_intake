@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, func, select, text
+from sqlalchemy import delete, func, insert, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import Label
@@ -102,10 +102,26 @@ class NatIntakeRowErrorRepository(SQLAlchemyRepository[NatIntakeRowError, UUID])
         super().__init__(model=NatIntakeRowError, session=session)
 
     async def create_many(self, entities: Sequence[NatIntakeRowError]) -> None:
+        session_id = hex(id(self._session))
         if not entities:
+            logger.debug(
+                f'[{self._model.__name__}] Skipping create_many: no entities provided '
+                f'[Session ID: {session_id}]'
+            )
             return
-        self._session.add_all(entities)
-        await self._session.flush()
+        col_keys = [attr.key for attr in NatIntakeRowError.__mapper__.column_attrs]
+        logger.debug(
+            f'[{self._model.__name__}] Bulk-inserting {len(entities)} entities via Core INSERT '
+            f'[Session ID: {session_id}]'
+        )
+        await self._session.execute(
+            insert(NatIntakeRowError),
+            [{key: getattr(entity, key) for key in col_keys} for entity in entities],
+        )
+        logger.debug(
+            f'[{self._model.__name__}] {len(entities)} entities bulk-inserted successfully '
+            f'[Session ID: {session_id}]'
+        )
 
     async def count_by_intake_id(self, intake_id: UUID) -> int:
         statement = (
@@ -232,17 +248,27 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
             )
             return
 
+        now = datetime.now(UTC)
+        col_keys = [
+            attr.key
+            for attr in NatTask.__mapper__.column_attrs
+            if attr.key not in ('created_at', 'updated_at')
+        ]
         logger.debug(
-            f'[{self._model.__name__}] Adding {len(entities)} entities to identity map '
+            f'[{self._model.__name__}] Bulk-inserting {len(entities)} entities via Core INSERT '
             f'[Session ID: {session_id}]'
         )
-        self._session.add_all(entities)
-        logger.debug(
-            f'[{self._model.__name__}] Executing flush for {len(entities)} entities'
+        await self._session.execute(
+            insert(NatTask),
+            [
+                {key: getattr(entity, key) for key in col_keys}
+                | {'created_at': now, 'updated_at': now}
+                for entity in entities
+            ],
         )
-        await self._session.flush()
         logger.debug(
-            f'[{self._model.__name__}] {len(entities)} entities created and flushed successfully'
+            f'[{self._model.__name__}] {len(entities)} entities bulk-inserted successfully '
+            f'[Session ID: {session_id}]'
         )
 
     async def count_filtered(self, filters: NatTaskFilters) -> int:
