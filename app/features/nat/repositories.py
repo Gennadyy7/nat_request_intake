@@ -10,7 +10,9 @@ from sqlalchemy.sql.elements import Label
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.repositories.sqlalchemy import SQLAlchemyRepository
+from app.features.nat.constants import NatTaskStatus
 from app.features.nat.domain.deduplication_key import DeduplicationKey
+from app.features.nat.domain.transformed_row import TransformedRow
 from app.features.nat.models import (
     NatBatch,
     NatDedupKey,
@@ -43,6 +45,14 @@ from app.features.nat.repository_records import (
 from app.features.nat.services.deduplication.deduplication_key import build_key_hash
 
 logger = get_logger(__name__)
+
+# Column order for COPY - computed once at import time from the mapper.
+# If NatTask gains a new column, add the corresponding value to the tuple
+# in create_many_from_rows to keep positions aligned.
+_NAT_TASK_COPY_COLUMNS: list[str] = [
+    attr.key for attr in NatTask.__mapper__.column_attrs
+]
+_QUEUED_STATUS: int = int(NatTaskStatus.QUEUED)
 
 
 class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
@@ -239,35 +249,60 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
     def __init__(self, session: AsyncSession):
         super().__init__(model=NatTask, session=session)
 
-    async def create_many(self, entities: Sequence[NatTask]) -> None:
+    async def create_many_from_rows(
+        self,
+        rows: Sequence[TransformedRow],
+        batch_id: UUID,
+    ) -> None:
         session_id = hex(id(self._session))
-        if not entities:
+        if not rows:
             logger.debug(
-                f'[{self._model.__name__}] Skipping create_many: no entities provided '
+                f'[{self._model.__name__}] Skipping create_many_from_rows: no rows provided '
                 f'[Session ID: {session_id}]'
             )
             return
 
         now = datetime.now(UTC)
-        col_keys = [
-            attr.key
-            for attr in NatTask.__mapper__.column_attrs
-            if attr.key not in ('created_at', 'updated_at')
+        records = [
+            (
+                uuid4(),  # id
+                batch_id,  # batch_id
+                None,  # nat_request_id
+                row.datetime_from,  # datetime_from
+                row.datetime_to,  # datetime_to
+                row.src_xlated,  # src_xlated
+                row.src_port_xlated,  # src_port_xlated
+                row.src,  # src
+                row.src_port,  # src_port
+                row.dst,  # dst
+                row.dst_port,  # dst_port
+                row.region,  # region
+                _QUEUED_STATUS,  # status
+                None,  # progress
+                None,  # nat_response_file
+                None,  # count_of_lines
+                None,  # file_size
+                None,  # error_message
+                now,  # created_at
+                now,  # updated_at
+            )
+            for row in rows
         ]
         logger.debug(
-            f'[{self._model.__name__}] Bulk-inserting {len(entities)} entities via Core INSERT '
+            f'[{self._model.__name__}] Bulk-inserting {len(records)} rows via COPY protocol '
             f'[Session ID: {session_id}]'
         )
-        await self._session.execute(
-            insert(NatTask),
-            [
-                {key: getattr(entity, key) for key in col_keys}
-                | {'created_at': now, 'updated_at': now}
-                for entity in entities
-            ],
+        conn = await self._session.connection()
+        raw = await conn.get_raw_connection()
+        asyncpg_conn = raw.driver_connection
+        assert asyncpg_conn is not None
+        await asyncpg_conn.copy_records_to_table(
+            'nat_tasks',
+            records=records,
+            columns=_NAT_TASK_COPY_COLUMNS,
         )
         logger.debug(
-            f'[{self._model.__name__}] {len(entities)} entities bulk-inserted successfully '
+            f'[{self._model.__name__}] {len(records)} rows bulk-inserted successfully via COPY '
             f'[Session ID: {session_id}]'
         )
 

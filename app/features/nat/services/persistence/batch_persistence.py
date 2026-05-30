@@ -1,10 +1,9 @@
 from collections.abc import Sequence
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
-from app.features.nat.constants import NatTaskStatus
 from app.features.nat.domain.transformed_row import TransformedRow
-from app.features.nat.models import NatBatch, NatTask
+from app.features.nat.models import NatBatch
 
 
 class BatchPersistenceService:
@@ -27,25 +26,5 @@ class BatchPersistenceService:
             row_count=row_count,
         )
         await self._uow.nat_batches.create(batch)
-
-        tasks = [
-            NatTask(
-                id=uuid4(),
-                batch_id=batch_id,
-                nat_request_id=None,
-                datetime_from=row.datetime_from,
-                datetime_to=row.datetime_to,
-                src_xlated=row.src_xlated,
-                src_port_xlated=row.src_port_xlated,
-                src=row.src,
-                src_port=row.src_port,
-                dst=row.dst,
-                dst_port=row.dst_port,
-                region=row.region,
-                status=NatTaskStatus.QUEUED,
-            )
-            for row in transformed_rows
-        ]
-        await self._uow.nat_tasks.create_many(tasks)
-
+        await self._uow.nat_tasks.create_many_from_rows(transformed_rows, batch_id)
         return batch
