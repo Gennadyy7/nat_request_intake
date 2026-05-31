@@ -1,3 +1,4 @@
+from app.core.config import settings
 from app.features.auth.constants import AuthErrorCode
 from app.features.nat.constants import (
     ApiErrorCode,
@@ -36,7 +37,11 @@ MESSAGES: dict[str, str] = {
     ValidationErrorCode.INVALID_REGION: 'Некорректный код области',
     ValidationErrorCode.NO_VALID_ROWS: ('Файл не содержит ни одной корректной строки'),
     # DeduplicationErrorCode
-    DeduplicationErrorCode.DUPLICATE_REQUEST: ('Запрос уже был зарегистрирован ранее'),
+    DeduplicationErrorCode.DUPLICATE_REQUEST: (
+        f'Дубликат: строка с такими данными уже принята. '  # noqa: RUF001
+        f'Повторная подача одинаковых строк возможна не ранее чем '
+        f'через {settings.NAT_IDEMPOTENCY_WINDOW_MINUTES} мин. после первой.'
+    ),
     # TransformationErrorCode
     TransformationErrorCode.EXPANSION_LIMIT_EXCEEDED: (
         'Превышен лимит разворачивания IP-диапазона'
