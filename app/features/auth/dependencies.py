@@ -6,6 +6,7 @@ from pydantic import EmailStr
 
 from app.features.auth.constants import AuthErrorCode
 from app.features.auth.schemas import AuthErrorResponse, User
+from app.features.nat.messages import get_message
 
 
 async def get_sender_email(
@@ -16,6 +17,7 @@ async def get_sender_email(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=AuthErrorResponse(
                 error_code=AuthErrorCode.MISSING_EMAIL,
+                message=get_message(AuthErrorCode.MISSING_EMAIL),
             ).model_dump(mode='json'),
         )
     return user.email

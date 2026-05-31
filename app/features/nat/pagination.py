@@ -5,6 +5,8 @@ from math import ceil
 from fastapi import HTTPException, status
 
 from app.core.config import settings
+from app.features.nat.constants import ApiErrorCode
+from app.features.nat.messages import get_message
 from app.features.nat.query_params import SortOrder, SortParams
 from app.features.nat.schemas.pagination import PaginatedResponse, PaginationMeta
 
@@ -79,7 +81,8 @@ def resolve_sort_params(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
-                'error': 'invalid_sort_by',
+                'error_code': ApiErrorCode.INVALID_SORT_BY,
+                'message': get_message(ApiErrorCode.INVALID_SORT_BY),
                 'sort_by': resolved_sort_by,
                 'allowed': sorted(allowed_columns),
             },
@@ -91,7 +94,8 @@ def resolve_sort_params(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
-                'error': 'invalid_sort_order',
+                'error_code': ApiErrorCode.INVALID_SORT_ORDER,
+                'message': get_message(ApiErrorCode.INVALID_SORT_ORDER),
                 'sort_order': sort_order,
                 'allowed': ['asc', 'desc'],
             },

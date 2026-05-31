@@ -9,6 +9,7 @@ from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.nat.constants import IntakeStatus, RowErrorCode, ValidationErrorCode
 from app.features.nat.domain.transformed_row import TransformedRow
 from app.features.nat.domain.validated_row import ValidatedRow
+from app.features.nat.messages import get_message
 from app.features.nat.models import NatIntake, NatIntakeRowError
 from app.features.nat.schemas.intake import IntakeResponse, RowErrorResponse
 from app.features.nat.services.deduplication.deduplication_service import (
@@ -138,6 +139,7 @@ class IntakeService:
                         row_number=error.row_number,
                         error_code=error.error_code,
                         column=error.column,
+                        message=get_message(error.error_code),
                     )
                 )
                 logger.warning(
@@ -170,6 +172,7 @@ class IntakeService:
                     row_number=dedup_error.row_number,
                     error_code=dedup_error.error_code,
                     column=None,
+                    message=get_message(dedup_error.error_code),
                 )
             )
             logger.warning(
@@ -200,6 +203,7 @@ class IntakeService:
                         row_number=transform_error.row_number,
                         error_code=transform_error.error_code,
                         column=transform_error.column,
+                        message=get_message(transform_error.error_code),
                     )
                 )
                 logger.warning(
@@ -232,6 +236,7 @@ class IntakeService:
                     row_number=registration_error.row_number,
                     error_code=registration_error.error_code,
                     column=None,
+                    message=get_message(registration_error.error_code),
                 )
             )
             logger.warning(
@@ -281,7 +286,7 @@ class IntakeService:
                 if not row_errors
                 else IntakeStatus.PARTIALLY_ACCEPTED.value
             )
-            intake.file_error_code = None
+            intake.error_code = None
             await self._uow.commit()
         except Exception:
             self._file_storage.delete(storage_path)
@@ -310,7 +315,7 @@ class IntakeService:
             total_data_rows=total_data_rows,
             valid_rows=valid_rows,
             rejected_rows=rejected_rows,
-            file_error_code=None,
+            error_code=None,
         )
 
     async def _create_intake(
@@ -324,7 +329,7 @@ class IntakeService:
             sender_email=str(sender_email),
             file_name=file_name,
             status=IntakeStatus.REJECTED.value,
-            file_error_code=None,
+            error_code=None,
         )
         await self._uow.nat_intakes.create(intake)
         return intake
@@ -362,7 +367,7 @@ class IntakeService:
             error_code.value,
         )
         intake.status = IntakeStatus.REJECTED.value
-        intake.file_error_code = error_code.value
+        intake.error_code = error_code.value
         await self._uow.commit()
         return self._build_response(
             intake_id=intake.id,
@@ -373,7 +378,7 @@ class IntakeService:
             total_data_rows=0,
             valid_rows=0,
             rejected_rows=0,
-            file_error_code=error_code,
+            error_code=error_code,
         )
 
     async def _reject_with_row_errors(
@@ -390,7 +395,7 @@ class IntakeService:
             intake.file_name,
         )
         intake.status = IntakeStatus.REJECTED.value
-        intake.file_error_code = ValidationErrorCode.NO_VALID_ROWS.value
+        intake.error_code = ValidationErrorCode.NO_VALID_ROWS.value
         await self._persist_row_errors(intake.id, row_errors)
         await self._uow.commit()
         return self._build_response(
@@ -402,7 +407,7 @@ class IntakeService:
             total_data_rows=total_data_rows,
             valid_rows=0,
             rejected_rows=total_data_rows,
-            file_error_code=ValidationErrorCode.NO_VALID_ROWS,
+            error_code=ValidationErrorCode.NO_VALID_ROWS,
         )
 
     def _build_response(
@@ -416,7 +421,7 @@ class IntakeService:
         total_data_rows: int,
         valid_rows: int,
         rejected_rows: int,
-        file_error_code: ValidationErrorCode | None,
+        error_code: ValidationErrorCode | None,
     ) -> IntakeResponse:
         return IntakeResponse(
             intake_id=intake_id,
@@ -427,7 +432,8 @@ class IntakeService:
             total_data_rows=total_data_rows,
             valid_rows=valid_rows,
             rejected_rows=rejected_rows,
-            file_error_code=file_error_code,
+            error_code=error_code,
+            message=get_message(error_code) if error_code is not None else None,
         )
 
 

@@ -8,6 +8,7 @@ from app.features.nat.constants import (
     RowErrorCode,
     ValidationErrorCode,
 )
+from app.features.nat.messages import get_message
 from app.features.nat.models import NatIntakeRowError
 from app.features.nat.pagination import PaginationParams, build_paginated_response
 from app.features.nat.query_params import NatIntakeFilters, SortOrder, SortParams
@@ -86,12 +87,14 @@ class IntakeQueryService:
 
     def _to_list_item(self, record: NatIntakeListRecord) -> NatIntakeListItem:
         intake = record.intake
+        error_code = _parse_error_code(intake.error_code)
         return NatIntakeListItem(
             id=intake.id,
             sender_email=intake.sender_email,
             file_name=intake.file_name,
             status=IntakeStatus(intake.status),
-            file_error_code=_parse_file_error_code(intake.file_error_code),
+            error_code=error_code,
+            message=get_message(error_code) if error_code is not None else None,
             batch_id=record.batch_id,
             created_at=intake.created_at,
             updated_at=intake.updated_at,
@@ -103,10 +106,12 @@ class IntakeQueryService:
 
     def _to_row_error_item(self, error: NatIntakeRowError) -> NatIntakeRowErrorItem:
         column = InputColumnName(error.column) if error.column is not None else None
+        error_code = _parse_row_error_code(error.error_code)
         return NatIntakeRowErrorItem(
             row_number=error.row_number,
-            error_code=_parse_row_error_code(error.error_code),
+            error_code=error_code,
             column=column,
+            message=get_message(error_code),
         )
 
 
@@ -114,7 +119,7 @@ def _parse_row_error_code(value: str) -> RowErrorCode:
     return cast(RowErrorCode, value)
 
 
-def _parse_file_error_code(
+def _parse_error_code(
     value: str | None,
 ) -> ValidationErrorCode | None:
     if value is None:

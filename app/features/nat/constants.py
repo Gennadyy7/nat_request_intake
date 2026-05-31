@@ -73,6 +73,15 @@ class AllowedFileExtension(StrEnum):
     XLSX = '.xlsx'
 
 
+class ApiErrorCode(StrEnum):
+    INTAKE_NOT_FOUND = 'INTAKE_NOT_FOUND'
+    BATCH_NOT_FOUND = 'BATCH_NOT_FOUND'
+    TASK_NOT_FOUND = 'TASK_NOT_FOUND'
+    INVALID_FILTER_STATUS = 'INVALID_FILTER_STATUS'
+    INVALID_SORT_BY = 'INVALID_SORT_BY'
+    INVALID_SORT_ORDER = 'INVALID_SORT_ORDER'
+
+
 class IntakeStatus(StrEnum):
     REJECTED = 'rejected'
     PARTIALLY_ACCEPTED = 'partially_accepted'

@@ -8,7 +8,7 @@ from pydantic import EmailStr
 
 from app.features.auth.dependencies import get_sender_email
 from app.features.auth.schemas import User
-from app.features.nat.constants import IntakeStatus
+from app.features.nat.constants import ApiErrorCode, IntakeStatus
 from app.features.nat.dependencies import (
     get_batch_query_service,
     get_intake_query_service,
@@ -25,6 +25,7 @@ from app.features.nat.list_dependencies import (
     get_nat_task_sort_params,
     get_pagination_params,
 )
+from app.features.nat.messages import get_message
 from app.features.nat.pagination import PaginationParams
 from app.features.nat.query_params import (
     NatBatchFilters,
@@ -106,7 +107,11 @@ async def get_intake(
     if detail is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={'error': 'intake_not_found', 'intake_id': str(intake_id)},
+            detail={
+                'error_code': ApiErrorCode.INTAKE_NOT_FOUND,
+                'message': get_message(ApiErrorCode.INTAKE_NOT_FOUND),
+                'intake_id': str(intake_id),
+            },
         )
     return detail
 
@@ -133,7 +138,11 @@ async def list_intake_row_errors(
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={'error': 'intake_not_found', 'intake_id': str(intake_id)},
+            detail={
+                'error_code': ApiErrorCode.INTAKE_NOT_FOUND,
+                'message': get_message(ApiErrorCode.INTAKE_NOT_FOUND),
+                'intake_id': str(intake_id),
+            },
         )
     return result
 
@@ -163,7 +172,11 @@ async def get_batch(
     if detail is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={'error': 'batch_not_found', 'batch_id': str(batch_id)},
+            detail={
+                'error_code': ApiErrorCode.BATCH_NOT_FOUND,
+                'message': get_message(ApiErrorCode.BATCH_NOT_FOUND),
+                'batch_id': str(batch_id),
+            },
         )
     return detail
 
@@ -193,6 +206,10 @@ async def get_task(
     if detail is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={'error': 'task_not_found', 'task_id': str(task_id)},
+            detail={
+                'error_code': ApiErrorCode.TASK_NOT_FOUND,
+                'message': get_message(ApiErrorCode.TASK_NOT_FOUND),
+                'task_id': str(task_id),
+            },
         )
     return detail

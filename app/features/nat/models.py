@@ -40,7 +40,7 @@ class NatIntake(Base, TimestampMixin):
         comment='Intake processing status (accepted, partially_accepted, rejected)',
     )
 
-    file_error_code: Mapped[str | None] = mapped_column(
+    error_code: Mapped[str | None] = mapped_column(
         String(64),
         nullable=True,
         comment='File-level validation error code when the intake is rejected',

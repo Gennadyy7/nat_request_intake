@@ -7,6 +7,7 @@ from app.features.auth.constants import AuthErrorCode
 
 class AuthErrorResponse(BaseModel):
     error_code: AuthErrorCode
+    message: str
 
 
 class User(BaseModel):

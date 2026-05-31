@@ -14,6 +14,7 @@ class RowErrorResponse(BaseModel):
     row_number: int = Field(ge=1)
     error_code: RowErrorCode
     column: InputColumnName | None = None
+    message: str | None = None
 
 
 class IntakeResponse(BaseModel):
@@ -25,4 +26,5 @@ class IntakeResponse(BaseModel):
     total_data_rows: int = Field(ge=0)
     valid_rows: int = Field(ge=0)
     rejected_rows: int = Field(ge=0)
-    file_error_code: ValidationErrorCode | None = None
+    error_code: ValidationErrorCode | None = None
+    message: str | None = None

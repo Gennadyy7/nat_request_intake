@@ -4,7 +4,8 @@ from uuid import UUID
 
 from fastapi import HTTPException, Query, status
 
-from app.features.nat.constants import IntakeStatus
+from app.features.nat.constants import ApiErrorCode, IntakeStatus
+from app.features.nat.messages import get_message
 from app.features.nat.pagination import (
     PaginationParams,
     build_pagination_params,
@@ -83,7 +84,8 @@ def get_nat_intake_filters(
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={
-                    'error': 'invalid_filter_status',
+                    'error_code': ApiErrorCode.INVALID_FILTER_STATUS,
+                    'message': get_message(ApiErrorCode.INVALID_FILTER_STATUS),
                     'filter_status': filter_status,
                     'allowed': [member.value for member in IntakeStatus],
                 },
@@ -124,7 +126,8 @@ def get_nat_intake_row_errors_sort_order(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
-                'error': 'invalid_sort_order',
+                'error_code': ApiErrorCode.INVALID_SORT_ORDER,
+                'message': get_message(ApiErrorCode.INVALID_SORT_ORDER),
                 'sort_order': sort_order,
                 'allowed': ['asc', 'desc'],
             },

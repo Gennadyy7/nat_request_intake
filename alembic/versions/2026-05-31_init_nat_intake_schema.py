@@ -1,8 +1,8 @@
 """init_nat_intake_schema
 
-Revision ID: 91886a268e1e
+Revision ID: a8da11eed02c
 Revises:
-Create Date: 2026-05-29 01:04:41.723170
+Create Date: 2026-05-31 16:05:39.464455
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '91886a268e1e'
+revision: str = 'a8da11eed02c'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -115,7 +115,7 @@ def upgrade() -> None:
             comment='Intake processing status (accepted, partially_accepted, rejected)',
         ),
         sa.Column(
-            'file_error_code',
+            'error_code',
             sa.String(length=64),
             nullable=True,
             comment='File-level validation error code when the intake is rejected',
