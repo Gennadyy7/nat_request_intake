@@ -29,7 +29,7 @@ def parse_task_int_filter(
         return TaskIntFilter(eq_value=int(raw), is_null=False)
     except ValueError as exc:
         error_code = (
-            ApiErrorCode.INVALID_FILTER_STATUS
+            ApiErrorCode.INVALID_FILTER_TASK_STATUS
             if field == 'status'
             else ApiErrorCode.INVALID_FILTER_NAT_REQUEST_ID
         )
@@ -40,6 +40,5 @@ def parse_task_int_filter(
                 'error_code': error_code,
                 'message': get_message(error_code),
                 param_name: raw,
-                'allowed_hint': 'целое число или null',
             },
         ) from exc

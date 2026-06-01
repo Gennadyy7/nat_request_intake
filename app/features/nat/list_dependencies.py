@@ -138,21 +138,8 @@ def get_nat_intake_row_errors_sort_order(
 
 def get_nat_task_filters(
     filter_batch_id: Annotated[UUID | None, Query()] = None,
-    filter_status: Annotated[
-        str | None,
-        Query(
-            description='Код статуса NAT (целое число) или null для задач без статуса',
-        ),
-    ] = None,
-    filter_nat_request_id: Annotated[
-        str | None,
-        Query(
-            description=(
-                'Идентификатор запроса NAT (целое число) или null, '
-                'если запрос ещё не отправлен'
-            ),
-        ),
-    ] = None,
+    filter_status: Annotated[str | None, Query()] = None,
+    filter_nat_request_id: Annotated[str | None, Query()] = None,
     filter_region: Annotated[str | None, Query()] = None,
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
     filter_created_at_to: Annotated[datetime | None, Query()] = None,
