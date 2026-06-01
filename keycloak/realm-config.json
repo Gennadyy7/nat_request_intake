@@ -1,0 +1,5 @@
+{
+  "realm": "fastapi_keycloak_integration_realm",
+  "enabled": true,
+  "sslRequired": "none"
+}
