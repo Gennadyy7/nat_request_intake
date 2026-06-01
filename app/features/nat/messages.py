@@ -53,6 +53,9 @@ MESSAGES: dict[str, str] = {
     ApiErrorCode.BATCH_NOT_FOUND: 'Пакет не найден',
     ApiErrorCode.TASK_NOT_FOUND: 'Задача не найдена',
     ApiErrorCode.INVALID_FILTER_STATUS: 'Недопустимое значение фильтра статуса',
+    ApiErrorCode.INVALID_FILTER_COMBINATION: (
+        'Нельзя одновременно фильтровать по значению и по отсутствию значения'
+    ),
     ApiErrorCode.INVALID_SORT_BY: 'Недопустимое поле сортировки',
     ApiErrorCode.INVALID_SORT_ORDER: (
         'Недопустимый порядок сортировки. Допустимые значения: asc, desc'
