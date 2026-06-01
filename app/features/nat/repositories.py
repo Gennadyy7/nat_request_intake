@@ -10,7 +10,6 @@ from sqlalchemy.sql.elements import Label
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.repositories.sqlalchemy import SQLAlchemyRepository
-from app.features.nat.constants import NatTaskStatus
 from app.features.nat.domain.deduplication_key import DeduplicationKey
 from app.features.nat.domain.transformed_row import TransformedRow
 from app.features.nat.models import (
@@ -52,7 +51,6 @@ logger = get_logger(__name__)
 _NAT_TASK_COPY_COLUMNS: list[str] = [
     attr.key for attr in NatTask.__mapper__.column_attrs
 ]
-_QUEUED_STATUS: int = int(NatTaskStatus.QUEUED)
 
 
 class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
@@ -277,7 +275,7 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
                 row.dst,  # dst
                 row.dst_port,  # dst_port
                 row.region,  # region
-                _QUEUED_STATUS,  # status
+                None,  # status
                 None,  # progress
                 None,  # nat_response_file
                 None,  # count_of_lines

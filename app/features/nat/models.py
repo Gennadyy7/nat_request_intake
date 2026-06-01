@@ -3,11 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, text
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
-from app.features.nat.constants import NatTaskStatus
 
 
 class NatIntake(Base, TimestampMixin):
@@ -280,13 +279,11 @@ class NatTask(Base, TimestampMixin):
         comment='Region code for NAT request (1-8 or placeholder)',
     )
 
-    status: Mapped[int] = mapped_column(
+    status: Mapped[int | None] = mapped_column(
         Integer,
-        nullable=False,
+        nullable=True,
         index=True,
-        default=NatTaskStatus.QUEUED,
-        server_default=text(str(NatTaskStatus.QUEUED.value)),
-        comment='Processing status code from NAT API',
+        comment='Processing status code from NAT API; NULL until assigned',
     )
 
     progress: Mapped[int | None] = mapped_column(
