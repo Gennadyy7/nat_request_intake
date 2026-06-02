@@ -9,10 +9,7 @@ from app.features.email.dependencies import (
     EmailMessageQueryServiceDep,
     EmailSenderServiceDep,
 )
-from app.features.email.list_dependencies import (
-    get_email_message_filters,
-    get_pagination_params,
-)
+from app.features.email.list_dependencies import get_email_message_filters
 from app.features.email.query_params import EmailMessageFilters
 from app.features.email.schemas import (
     EmailMessageListItem,
@@ -21,6 +18,7 @@ from app.features.email.schemas import (
     EmailSenderResponse,
     EmailSenderUpdate,
 )
+from app.features.nat.list_dependencies import get_pagination_params
 from app.features.nat.pagination import PaginationParams
 from app.features.nat.schemas.pagination import PaginatedResponse
 

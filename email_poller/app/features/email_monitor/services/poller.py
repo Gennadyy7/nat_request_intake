@@ -5,7 +5,12 @@ from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from app.core.unit_of_work.sqlalchemy import SQLAlchemyUnitOfWork
-from app.features.email.constants import EmailProcessingStatus
+from app.features.email.constants import (
+    EMAIL_PARSE_FAILURE_SENDER,
+    EmailProcessingStatus,
+    EmailSkipReason,
+)
+from app.features.email.messages import get_message
 from app.features.email.models import EmailMessage
 from app.features.email.schemas import normalize_email
 from app.features.nat.constants import IntakeStatus
@@ -22,11 +27,6 @@ from email_poller.app.features.email_monitor.imap.parser import (
 )
 
 logger = get_logger(__name__)
-
-_SKIP_NOT_WHITELISTED = 'sender not in whitelist'
-_SKIP_NO_ATTACHMENT = 'no allowed attachment'
-_SKIP_PARSE_FAILED = 'failed to parse email'
-_PARSE_FAILURE_SENDER = 'unknown@invalid.local'
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,11 +91,12 @@ class EmailPollService:
                 uid,
                 surrogate_message_id,
             )
+            skip_code, skip_message = _skip_error_fields(EmailSkipReason.PARSE_FAILED)
             await self._persist_and_mark_seen(
                 imap,
                 uid,
                 _EmailAuditFields(
-                    sender_email=_PARSE_FAILURE_SENDER,
+                    sender_email=EMAIL_PARSE_FAILURE_SENDER,
                     message_id=surrogate_message_id,
                     subject=None,
                     body=None,
@@ -103,8 +104,8 @@ class EmailPollService:
                 ),
                 processing_status=EmailProcessingStatus.SKIPPED,
                 nat_intake_id=None,
-                error_code=None,
-                error_message=_SKIP_PARSE_FAILED,
+                error_code=skip_code,
+                error_message=skip_message,
             )
             return
 
@@ -143,14 +144,17 @@ class EmailPollService:
                 parsed.sender_email,
                 uid,
             )
+            skip_code, skip_message = _skip_error_fields(
+                EmailSkipReason.SENDER_NOT_WHITELISTED,
+            )
             await self._persist_and_mark_seen(
                 imap,
                 uid,
                 fields,
                 processing_status=EmailProcessingStatus.SKIPPED,
                 nat_intake_id=None,
-                error_code=None,
-                error_message=_SKIP_NOT_WHITELISTED,
+                error_code=skip_code,
+                error_message=skip_message,
             )
             return
 
@@ -160,14 +164,17 @@ class EmailPollService:
                 parsed.sender_email,
                 uid,
             )
+            skip_code, skip_message = _skip_error_fields(
+                EmailSkipReason.NO_ALLOWED_ATTACHMENT,
+            )
             await self._persist_and_mark_seen(
                 imap,
                 uid,
                 fields,
                 processing_status=EmailProcessingStatus.SKIPPED,
                 nat_intake_id=None,
-                error_code=None,
-                error_message=_SKIP_NO_ATTACHMENT,
+                error_code=skip_code,
+                error_message=skip_message,
             )
             return
 
@@ -197,14 +204,15 @@ class EmailPollService:
                 uid,
                 exc,
             )
+            skip_code, skip_message = _skip_error_fields(EmailSkipReason.NAT_B2B_FAILED)
             await self._persist_and_mark_seen(
                 imap,
                 uid,
                 fields,
                 processing_status=EmailProcessingStatus.SKIPPED,
                 nat_intake_id=None,
-                error_code=None,
-                error_message=str(exc),
+                error_code=skip_code,
+                error_message=skip_message,
             )
             return
 
@@ -310,6 +318,10 @@ def _fields_from_parsed(parsed: ParsedIncomingEmail) -> _EmailAuditFields:
 def _surrogate_message_id(uid: str) -> str:
     timestamp = datetime.now(UTC).strftime('%Y%m%dT%H%M%S%fZ')
     return f'local-{uid}-{timestamp}'
+
+
+def _skip_error_fields(reason: EmailSkipReason) -> tuple[str, str]:
+    return reason.value, get_message(reason.value)
 
 
 def _should_retry_later(exc: NatIntakeTransportError) -> bool:

@@ -36,7 +36,6 @@ class EmailSenderService:
         try:
             await self._uow.email_senders.create(entity)
         except IntegrityError:
-            await self._uow.rollback()
             self._raise_sender_exists()
         await self._uow.commit()
         return EmailSenderResponse.model_validate(entity)
@@ -89,7 +88,6 @@ class EmailSenderService:
         try:
             await self._uow.email_senders.update(entity)
         except IntegrityError:
-            await self._uow.rollback()
             self._raise_sender_exists()
         await self._uow.commit()
         return EmailSenderResponse.model_validate(entity)

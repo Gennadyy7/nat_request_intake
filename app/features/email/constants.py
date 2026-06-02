@@ -7,6 +7,16 @@ class EmailProcessingStatus(StrEnum):
     SKIPPED = 'skipped'
 
 
+class EmailSkipReason(StrEnum):
+    SENDER_NOT_WHITELISTED = 'SENDER_NOT_WHITELISTED'
+    NO_ALLOWED_ATTACHMENT = 'NO_ALLOWED_ATTACHMENT'
+    PARSE_FAILED = 'PARSE_FAILED'
+    NAT_B2B_FAILED = 'NAT_B2B_FAILED'
+
+
+EMAIL_PARSE_FAILURE_SENDER = 'unknown@invalid.local'
+
+
 class EmailApiErrorCode(StrEnum):
     SENDER_NOT_FOUND = 'SENDER_NOT_FOUND'
     MESSAGE_NOT_FOUND = 'MESSAGE_NOT_FOUND'

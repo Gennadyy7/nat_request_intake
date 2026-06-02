@@ -6,9 +6,6 @@ from fastapi import HTTPException, Query, status
 from app.features.email.constants import EmailApiErrorCode, EmailProcessingStatus
 from app.features.email.messages import get_message
 from app.features.email.query_params import EmailMessageFilters
-from app.features.nat.list_dependencies import get_pagination_params
-
-__all__ = ['get_email_message_filters', 'get_pagination_params']
 
 
 def get_email_message_filters(
