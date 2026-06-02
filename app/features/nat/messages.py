@@ -54,6 +54,10 @@ MESSAGES: dict[str, str] = {
     ),
     # AuthErrorCode
     AuthErrorCode.MISSING_EMAIL: ('Email пользователя не указан в учётной записи'),
+    AuthErrorCode.UNAUTHORIZED_SERVICE: (
+        'Доступ запрещён: требуется учётная запись сервиса email-poller'
+    ),
+    AuthErrorCode.INVALID_SENDER_EMAIL: 'Некорректный адрес отправителя',
     # ApiErrorCode
     ApiErrorCode.INTAKE_NOT_FOUND: 'Запрос на загрузку не найден',
     ApiErrorCode.BATCH_NOT_FOUND: 'Пакет не найден',

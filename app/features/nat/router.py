@@ -6,9 +6,13 @@ from fastapi.responses import JSONResponse
 from fastapi_keycloak_middleware import get_user
 from pydantic import EmailStr
 
-from app.features.auth.dependencies import get_sender_email
+from app.features.auth.dependencies import (
+    get_b2b_sender_email,
+    get_sender_email,
+    require_email_poller_service,
+)
 from app.features.auth.schemas import User
-from app.features.nat.constants import ApiErrorCode, IntakeStatus
+from app.features.nat.constants import ApiErrorCode
 from app.features.nat.dependencies import (
     get_batch_query_service,
     get_intake_query_service,
@@ -44,6 +48,7 @@ from app.features.nat.schemas.intake_list import (
 from app.features.nat.schemas.pagination import PaginatedResponse
 from app.features.nat.schemas.task_list import NatTaskDetail, NatTaskListItem
 from app.features.nat.services.intake.intake_service import IntakeService
+from app.features.nat.services.intake.intake_upload import process_intake_upload
 from app.features.nat.services.listing.batch_query_service import BatchQueryService
 from app.features.nat.services.listing.intake_query_service import IntakeQueryService
 from app.features.nat.services.listing.task_query_service import TaskQueryService
@@ -69,17 +74,40 @@ async def intake_file(
     file: Annotated[UploadFile, File()],
 ) -> IntakeResponse | JSONResponse:
     content = await file.read()
-    result = await service.process(
+    return await process_intake_upload(
+        service=service,
         filename=file.filename,
         content=content,
         sender_email=sender_email,
     )
-    if result.status == IntakeStatus.REJECTED:
-        return JSONResponse(
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
-            content=result.model_dump(mode='json'),
-        )
-    return result
+
+
+@router.post(
+    '/intake/internal',
+    response_model=IntakeResponse,
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            'description': 'Missing or invalid service account token',
+        },
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            'description': 'Intake rejected or invalid sender_email form field',
+            'model': IntakeResponse,
+        },
+    },
+)
+async def intake_file_internal(
+    _service_account: Annotated[User, Depends(require_email_poller_service)],
+    sender_email: Annotated[EmailStr, Depends(get_b2b_sender_email)],
+    service: Annotated[IntakeService, Depends(get_intake_service)],
+    file: Annotated[UploadFile, File()],
+) -> IntakeResponse | JSONResponse:
+    content = await file.read()
+    return await process_intake_upload(
+        service=service,
+        filename=file.filename,
+        content=content,
+        sender_email=sender_email,
+    )
 
 
 @router.get('/intakes', response_model=PaginatedResponse[NatIntakeListItem])

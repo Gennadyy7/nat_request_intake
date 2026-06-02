@@ -50,17 +50,29 @@ class DatabaseManager:
         self._engine: AsyncEngine | None = None
         self._session_factory: async_sessionmaker[AsyncSession] | None = None
 
-    def init(self) -> None:
+    def init(
+        self,
+        *,
+        database_url: str | None = None,
+        db_echo: bool | None = None,
+        pool_size: int | None = None,
+        max_overflow: int | None = None,
+        pool_recycle: int | None = None,
+    ) -> None:
         if self._engine is not None:
             return
 
         self._engine = create_async_engine(
-            settings.DB_URL,
-            echo=settings.DB_ECHO,
+            database_url if database_url is not None else settings.DB_URL,
+            echo=db_echo if db_echo is not None else settings.DB_ECHO,
             pool_pre_ping=True,
-            pool_size=settings.DB_POOL_SIZE,
-            max_overflow=settings.DB_MAX_OVERFLOW,
-            pool_recycle=settings.DB_POOL_RECYCLE,
+            pool_size=pool_size if pool_size is not None else settings.DB_POOL_SIZE,
+            max_overflow=(
+                max_overflow if max_overflow is not None else settings.DB_MAX_OVERFLOW
+            ),
+            pool_recycle=(
+                pool_recycle if pool_recycle is not None else settings.DB_POOL_RECYCLE
+            ),
         )
 
         self._session_factory = async_sessionmaker(

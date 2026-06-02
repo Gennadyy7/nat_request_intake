@@ -5,6 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.logging import get_logger
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
+from app.features.email.repositories import (
+    EmailMessageRepository,
+    EmailSenderRepository,
+)
 from app.features.nat.repositories import (
     NatBatchRepository,
     NatDedupKeyRepository,
@@ -25,6 +29,8 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_batches: NatBatchRepository | None = None
         self._nat_tasks: NatTaskRepository | None = None
         self._nat_dedup_keys: NatDedupKeyRepository | None = None
+        self._email_senders: EmailSenderRepository | None = None
+        self._email_messages: EmailMessageRepository | None = None
         self._committed = False
         logger.debug('SQLAlchemyUnitOfWork initialized with session factory')
 
@@ -83,6 +89,28 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
             )
         return self._nat_dedup_keys
 
+    @property
+    def email_senders(self) -> EmailSenderRepository:
+        if self._email_senders is None:
+            logger.error(
+                'Attempted to access email_senders repository outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._email_senders
+
+    @property
+    def email_messages(self) -> EmailMessageRepository:
+        if self._email_messages is None:
+            logger.error(
+                'Attempted to access email_messages repository outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._email_messages
+
     async def __aenter__(self) -> Self:
         logger.debug('Entering UnitOfWork context: opening new database session')
         self._session = self._session_factory()
@@ -95,10 +123,10 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_batches = NatBatchRepository(self._session)
         self._nat_tasks = NatTaskRepository(self._session)
         self._nat_dedup_keys = NatDedupKeyRepository(self._session)
+        self._email_senders = EmailSenderRepository(self._session)
+        self._email_messages = EmailMessageRepository(self._session)
         self._committed = False
-        logger.debug(
-            'NatIntake, NatIntakeRowError, NatBatch, NatTask and NatDedupKey repositories initialized'
-        )
+        logger.debug('Nat and email repositories initialized for UnitOfWork session')
         return self
 
     async def __aexit__(

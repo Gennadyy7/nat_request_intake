@@ -32,6 +32,8 @@ class Settings(BaseSettings):
 
     admin_roles_env: str = Field(validation_alias='ADMIN_ROLES')
 
+    EMAIL_POLLER_CLIENT_ID: str = 'email_poller_client'
+
     DB_HOST: str | None = None
     DB_PORT: int | None = None
     DB_NAME: str | None = None
