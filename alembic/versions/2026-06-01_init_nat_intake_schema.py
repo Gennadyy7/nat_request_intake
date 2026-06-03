@@ -1,8 +1,8 @@
 """init_nat_intake_schema
 
-Revision ID: a8da11eed02c
+Revision ID: 4031e5e4f85c
 Revises:
-Create Date: 2026-05-31 16:05:39.464455
+Create Date: 2026-06-01 11:22:47.776004
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'a8da11eed02c'
+revision: str = '4031e5e4f85c'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -323,9 +323,8 @@ def upgrade() -> None:
         sa.Column(
             'status',
             sa.Integer(),
-            server_default=sa.text('-1'),
-            nullable=False,
-            comment='Processing status code from NAT API',
+            nullable=True,
+            comment='Processing status code from NAT API; NULL until assigned',
         ),
         sa.Column(
             'progress',

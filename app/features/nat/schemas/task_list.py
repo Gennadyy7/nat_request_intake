@@ -17,7 +17,7 @@ class NatTaskListItem(BaseModel):
     dst: str
     dst_port: int | None = None
     region: str
-    status: int
+    status: int | None = None
     progress: int | None = None
     nat_response_file: str | None = None
     count_of_lines: str | None = None
@@ -40,7 +40,7 @@ class NatTaskDetail(BaseModel):
     dst: str
     dst_port: int | None = None
     region: str
-    status: int
+    status: int | None = None
     progress: int | None = None
     nat_response_file: str | None = None
     count_of_lines: str | None = None

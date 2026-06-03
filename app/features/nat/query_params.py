@@ -47,7 +47,9 @@ class NatBatchFilters:
 class NatTaskFilters:
     batch_id: UUID | None = None
     status: int | None = None
+    status_is_null: bool = False
     nat_request_id: int | None = None
+    nat_request_id_is_null: bool = False
     region: str | None = None
     created_at_from: datetime | None = None
     created_at_to: datetime | None = None

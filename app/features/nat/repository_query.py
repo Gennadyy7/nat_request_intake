@@ -61,9 +61,13 @@ def build_task_filter_clauses(
     clauses: list[ColumnElement[bool]] = []
     if filters.batch_id is not None:
         clauses.append(NatTask.batch_id == filters.batch_id)
-    if filters.status is not None:
+    if filters.status_is_null:
+        clauses.append(NatTask.status.is_(None))
+    elif filters.status is not None:
         clauses.append(NatTask.status == filters.status)
-    if filters.nat_request_id is not None:
+    if filters.nat_request_id_is_null:
+        clauses.append(NatTask.nat_request_id.is_(None))
+    elif filters.nat_request_id is not None:
         clauses.append(NatTask.nat_request_id == filters.nat_request_id)
     if filters.region is not None:
         clauses.append(NatTask.region == filters.region)

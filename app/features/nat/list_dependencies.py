@@ -21,6 +21,7 @@ from app.features.nat.query_params import (
     SortOrder,
     SortParams,
 )
+from app.features.nat.services.listing.task_filter_parsing import parse_task_int_filter
 
 
 def get_pagination_params(
@@ -137,16 +138,23 @@ def get_nat_intake_row_errors_sort_order(
 
 def get_nat_task_filters(
     filter_batch_id: Annotated[UUID | None, Query()] = None,
-    filter_status: Annotated[int | None, Query()] = None,
-    filter_nat_request_id: Annotated[int | None, Query()] = None,
+    filter_status: Annotated[str | None, Query()] = None,
+    filter_nat_request_id: Annotated[str | None, Query()] = None,
     filter_region: Annotated[str | None, Query()] = None,
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
     filter_created_at_to: Annotated[datetime | None, Query()] = None,
 ) -> NatTaskFilters:
+    status_filter = parse_task_int_filter(filter_status, field='status')
+    nat_request_id_filter = parse_task_int_filter(
+        filter_nat_request_id,
+        field='nat_request_id',
+    )
     return NatTaskFilters(
         batch_id=filter_batch_id,
-        status=filter_status,
-        nat_request_id=filter_nat_request_id,
+        status=status_filter.eq_value,
+        status_is_null=status_filter.is_null,
+        nat_request_id=nat_request_id_filter.eq_value,
+        nat_request_id_is_null=nat_request_id_filter.is_null,
         region=filter_region,
         created_at_from=filter_created_at_from,
         created_at_to=filter_created_at_to,
