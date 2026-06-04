@@ -12,7 +12,6 @@ repos:
         name: mypy
         entry: poetry run mypy --config-file=pyproject.toml
         language: system
-        types: [python]
-        files: ^app/
         pass_filenames: false
+        require_serial: true
         always_run: true

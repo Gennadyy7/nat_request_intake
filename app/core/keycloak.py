@@ -19,6 +19,7 @@ def get_keycloak_config() -> KeycloakConfiguration:
             'given_name',
             'family_name',
             'roles',
+            'azp',
         ],
         reject_on_missing_claim=False,
     )

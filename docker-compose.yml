@@ -70,6 +70,8 @@ services:
       dockerfile: Dockerfile.app
     container_name: fastapi_backend
     depends_on:
+      app_postgres:
+        condition: service_healthy
       keycloak:
         condition: service_healthy
     ports:
@@ -84,6 +86,32 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+    restart: unless-stopped
+    networks:
+      - keycloak_network
+
+  email_poller:
+    build:
+      context: .
+      dockerfile: Dockerfile.email_poller
+    container_name: email_poller_service
+    depends_on:
+      app_postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      fastapi_app:
+        condition: service_healthy
+    ports:
+      - "8001:8001"
+    env_file:
+      - ./.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
     restart: unless-stopped
     networks:
       - keycloak_network

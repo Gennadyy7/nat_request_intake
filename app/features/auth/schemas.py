@@ -18,9 +18,13 @@ class User(BaseModel):
     last_name: str | None = None
     full_name: str | None = None
     roles: list[str] = []
+    authorized_party: str | None = None
 
     @classmethod
     def from_claims(cls, claims: dict[str, object]) -> Self:
+        azp = claims.get('azp')
+        client_id = claims.get('client_id')
+        authorized_party = azp if azp is not None else client_id
         return cls(
             id=cast(str, claims.get('sub', '')),
             username=cast(str | None, claims.get('preferred_username')),
@@ -29,4 +33,5 @@ class User(BaseModel):
             last_name=cast(str | None, claims.get('family_name')),
             full_name=cast(str | None, claims.get('name')),
             roles=cast(list[str], claims.get('roles', [])),
+            authorized_party=cast(str | None, authorized_party),
         )

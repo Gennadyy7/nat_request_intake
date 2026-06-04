@@ -1,5 +1,9 @@
 from enum import StrEnum
 
+EMAIL_POLLER_SERVICE_ROLE = 'service:email-poller'
+
 
 class AuthErrorCode(StrEnum):
     MISSING_EMAIL = 'MISSING_EMAIL'
+    UNAUTHORIZED_SERVICE = 'UNAUTHORIZED_SERVICE'
+    INVALID_SENDER_EMAIL = 'INVALID_SENDER_EMAIL'

@@ -1,6 +1,10 @@
 from types import TracebackType
 from typing import Protocol, Self
 
+from app.features.email.repositories import (
+    EmailMessageRepository,
+    EmailSenderRepository,
+)
 from app.features.nat.repositories import (
     NatBatchRepository,
     NatDedupKeyRepository,
@@ -25,6 +29,12 @@ class UnitOfWorkProtocol(Protocol):
 
     @property
     def nat_dedup_keys(self) -> NatDedupKeyRepository: ...
+
+    @property
+    def email_senders(self) -> EmailSenderRepository: ...
+
+    @property
+    def email_messages(self) -> EmailMessageRepository: ...
 
     async def __aenter__(self) -> Self: ...
 
