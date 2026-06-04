@@ -11,6 +11,7 @@ from app.features.email.query_params import (
     EmailMessageFilters,
     EmailSenderFilters,
 )
+from app.features.email.reply_status_filter_parsing import parse_reply_status_filter
 from app.features.email.schemas import normalize_email
 from app.features.nat.pagination import resolve_sort_params
 from app.features.nat.query_params import SortParams
@@ -57,6 +58,7 @@ def get_email_message_sort_params(
 def get_email_message_filters(
     filter_sender_email: Annotated[str | None, Query()] = None,
     filter_processing_status: Annotated[str | None, Query()] = None,
+    filter_reply_status: Annotated[str | None, Query()] = None,
     filter_received_at_from: Annotated[datetime | None, Query()] = None,
     filter_received_at_to: Annotated[datetime | None, Query()] = None,
 ) -> EmailMessageFilters:
@@ -76,6 +78,7 @@ def get_email_message_filters(
                     'allowed': [member.value for member in EmailProcessingStatus],
                 },
             ) from exc
+    reply_status_filter = parse_reply_status_filter(filter_reply_status)
     sender_email: str | None = None
     if filter_sender_email is not None:
         normalized = normalize_email(filter_sender_email)
@@ -84,6 +87,8 @@ def get_email_message_filters(
     return EmailMessageFilters(
         sender_email=sender_email,
         processing_status=processing_status,
+        reply_status=reply_status_filter.eq_value,
+        reply_status_is_null=reply_status_filter.is_null,
         received_at_from=filter_received_at_from,
         received_at_to=filter_received_at_to,
     )

@@ -1,6 +1,6 @@
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import EmailStr, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     IMAP_TIMEOUT_SECONDS: float = Field(default=10.0, ge=1.0)
     IMAP_MAILBOX: str
     EMAIL_POLL_INTERVAL_SECONDS: int = Field(ge=1)
+
+    EMAIL_REPLY_ENABLED: bool
+    EMAIL_REPLY_TO: EmailStr
+    SMTP_PORT: int = Field(ge=1, le=65535)
+    SMTP_USE_SSL: bool
 
     @model_validator(mode='after')
     def validate_db_config(self) -> Self:

@@ -30,6 +30,10 @@ def build_email_message_filter_clauses(
         clauses.append(
             EmailMessage.processing_status == filters.processing_status.value
         )
+    if filters.reply_status_is_null:
+        clauses.append(EmailMessage.reply_status.is_(None))
+    elif filters.reply_status is not None:
+        clauses.append(EmailMessage.reply_status == filters.reply_status.value)
     if filters.received_at_from is not None:
         clauses.append(EmailMessage.received_at >= filters.received_at_from)
     if filters.received_at_to is not None:

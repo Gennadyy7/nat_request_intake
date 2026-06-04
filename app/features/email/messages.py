@@ -15,6 +15,9 @@ MESSAGES: dict[str, str] = {
     EmailApiErrorCode.INVALID_FILTER_PROCESSING_STATUS: (
         'Недопустимое значение фильтра статуса обработки письма'
     ),
+    EmailApiErrorCode.INVALID_FILTER_REPLY_STATUS: (
+        'Недопустимое значение фильтра статуса ответа на письмо'
+    ),
 }
 
 

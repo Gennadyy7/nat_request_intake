@@ -12,6 +12,7 @@ from email_poller.app.core.keycloak_token import KeycloakTokenProvider
 from email_poller.app.core.logging import get_logger, setup_logging
 from email_poller.app.core.nat_client import NatIntakeClient
 from email_poller.app.features.email_monitor.services.poller import EmailPollService
+from email_poller.app.features.email_reply.service import EmailReplyService
 
 logger = get_logger(__name__)
 
@@ -33,7 +34,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     token_provider = KeycloakTokenProvider()
     nat_client = NatIntakeClient(token_provider)
-    poll_service = EmailPollService(nat_client)
+    reply_service = EmailReplyService()
+    poll_service = EmailPollService(nat_client, reply_service)
     poll_task = asyncio.create_task(_poll_loop(poll_service))
 
     try:
