@@ -1,7 +1,21 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Final
 
 from app.features.email.constants import EmailProcessingStatus
+
+EMAIL_SENDER_SORT_COLUMNS: Final[frozenset[str]] = frozenset(
+    {'email', 'created_at', 'updated_at'}
+)
+EMAIL_MESSAGE_SORT_COLUMNS: Final[frozenset[str]] = frozenset(
+    {'received_at', 'created_at', 'updated_at'}
+)
+
+
+@dataclass(frozen=True, slots=True)
+class EmailSenderFilters:
+    email: str | None = None
+    is_active: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)

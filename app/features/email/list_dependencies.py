@@ -5,7 +5,53 @@ from fastapi import HTTPException, Query, status
 
 from app.features.email.constants import EmailApiErrorCode, EmailProcessingStatus
 from app.features.email.messages import get_message
-from app.features.email.query_params import EmailMessageFilters
+from app.features.email.query_params import (
+    EMAIL_MESSAGE_SORT_COLUMNS,
+    EMAIL_SENDER_SORT_COLUMNS,
+    EmailMessageFilters,
+    EmailSenderFilters,
+)
+from app.features.email.schemas import normalize_email
+from app.features.nat.pagination import resolve_sort_params
+from app.features.nat.query_params import SortParams
+
+
+def get_email_sender_filters(
+    filter_email: Annotated[str | None, Query()] = None,
+    filter_is_active: Annotated[bool | None, Query()] = None,
+) -> EmailSenderFilters:
+    email: str | None = None
+    if filter_email is not None:
+        normalized = normalize_email(filter_email)
+        if normalized:
+            email = normalized
+    return EmailSenderFilters(email=email, is_active=filter_is_active)
+
+
+def get_email_sender_sort_params(
+    sort_by: Annotated[str | None, Query()] = None,
+    sort_order: Annotated[str | None, Query()] = None,
+) -> SortParams:
+    return resolve_sort_params(
+        sort_by=sort_by,
+        sort_order=sort_order,
+        allowed_columns=EMAIL_SENDER_SORT_COLUMNS,
+        default_sort_by='email',
+        default_sort_order='asc',
+    )
+
+
+def get_email_message_sort_params(
+    sort_by: Annotated[str | None, Query()] = None,
+    sort_order: Annotated[str | None, Query()] = None,
+) -> SortParams:
+    return resolve_sort_params(
+        sort_by=sort_by,
+        sort_order=sort_order,
+        allowed_columns=EMAIL_MESSAGE_SORT_COLUMNS,
+        default_sort_by='received_at',
+        default_sort_order='desc',
+    )
 
 
 def get_email_message_filters(
@@ -30,8 +76,13 @@ def get_email_message_filters(
                     'allowed': [member.value for member in EmailProcessingStatus],
                 },
             ) from exc
+    sender_email: str | None = None
+    if filter_sender_email is not None:
+        normalized = normalize_email(filter_sender_email)
+        if normalized:
+            sender_email = normalized
     return EmailMessageFilters(
-        sender_email=filter_sender_email,
+        sender_email=sender_email,
         processing_status=processing_status,
         received_at_from=filter_received_at_from,
         received_at_to=filter_received_at_to,

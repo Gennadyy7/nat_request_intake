@@ -9,8 +9,13 @@ from app.features.email.dependencies import (
     EmailMessageQueryServiceDep,
     EmailSenderServiceDep,
 )
-from app.features.email.list_dependencies import get_email_message_filters
-from app.features.email.query_params import EmailMessageFilters
+from app.features.email.list_dependencies import (
+    get_email_message_filters,
+    get_email_message_sort_params,
+    get_email_sender_filters,
+    get_email_sender_sort_params,
+)
+from app.features.email.query_params import EmailMessageFilters, EmailSenderFilters
 from app.features.email.schemas import (
     EmailMessageListItem,
     EmailMessageResponse,
@@ -20,6 +25,7 @@ from app.features.email.schemas import (
 )
 from app.features.nat.list_dependencies import get_pagination_params
 from app.features.nat.pagination import PaginationParams
+from app.features.nat.query_params import SortParams
 from app.features.nat.schemas.pagination import PaginatedResponse
 
 router = APIRouter(prefix='/email', tags=['email'])
@@ -42,9 +48,11 @@ async def create_sender(
 async def list_senders(
     _user: Annotated[User, Depends(get_user)],
     service: EmailSenderServiceDep,
+    filters: Annotated[EmailSenderFilters, Depends(get_email_sender_filters)],
+    sort: Annotated[SortParams, Depends(get_email_sender_sort_params)],
     pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
 ) -> PaginatedResponse[EmailSenderResponse]:
-    return await service.list(pagination)
+    return await service.list(filters, sort, pagination)
 
 
 @router.get('/senders/{sender_id}', response_model=EmailSenderResponse)
@@ -81,9 +89,10 @@ async def list_messages(
     _user: Annotated[User, Depends(get_user)],
     service: EmailMessageQueryServiceDep,
     filters: Annotated[EmailMessageFilters, Depends(get_email_message_filters)],
+    sort: Annotated[SortParams, Depends(get_email_message_sort_params)],
     pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
 ) -> PaginatedResponse[EmailMessageListItem]:
-    return await service.list(filters, pagination)
+    return await service.list(filters, sort, pagination)
 
 
 @router.get('/messages/{message_id}', response_model=EmailMessageResponse)

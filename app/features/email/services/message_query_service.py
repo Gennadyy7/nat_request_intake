@@ -9,6 +9,7 @@ from app.features.email.messages import get_message
 from app.features.email.query_params import EmailMessageFilters
 from app.features.email.schemas import EmailMessageListItem, EmailMessageResponse
 from app.features.nat.pagination import PaginationParams, build_paginated_response
+from app.features.nat.query_params import SortParams
 from app.features.nat.schemas.pagination import PaginatedResponse
 
 
@@ -25,11 +26,13 @@ class EmailMessageQueryService:
     async def list(
         self,
         filters: EmailMessageFilters,
+        sort: SortParams,
         pagination: PaginationParams,
     ) -> PaginatedResponse[EmailMessageListItem]:
         total = await self._uow.email_messages.count_filtered(filters)
         entities = await self._uow.email_messages.list_filtered(
             filters,
+            sort,
             limit=pagination.limit,
             offset=pagination.offset,
         )

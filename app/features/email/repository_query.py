@@ -1,8 +1,22 @@
 from sqlalchemy import ColumnElement
+from sqlalchemy.orm import InstrumentedAttribute
 
-from app.features.email.models import EmailMessage
-from app.features.email.query_params import EmailMessageFilters
+from app.features.email.models import EmailMessage, EmailSender
+from app.features.email.query_params import EmailMessageFilters, EmailSenderFilters
+from app.features.nat.query_params import SortParams
 from app.features.nat.repository_query import escape_ilike_pattern
+
+
+def build_email_sender_filter_clauses(
+    filters: EmailSenderFilters,
+) -> list[ColumnElement[bool]]:
+    clauses: list[ColumnElement[bool]] = []
+    if filters.email is not None:
+        pattern = f'%{escape_ilike_pattern(filters.email)}%'
+        clauses.append(EmailSender.email.ilike(pattern))
+    if filters.is_active is not None:
+        clauses.append(EmailSender.is_active.is_(filters.is_active))
+    return clauses
 
 
 def build_email_message_filter_clauses(
@@ -21,3 +35,19 @@ def build_email_message_filter_clauses(
     if filters.received_at_to is not None:
         clauses.append(EmailMessage.received_at <= filters.received_at_to)
     return clauses
+
+
+def sender_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:
+    return {
+        'email': EmailSender.email,
+        'created_at': EmailSender.created_at,
+        'updated_at': EmailSender.updated_at,
+    }[sort.sort_by]
+
+
+def message_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:
+    return {
+        'received_at': EmailMessage.received_at,
+        'created_at': EmailMessage.created_at,
+        'updated_at': EmailMessage.updated_at,
+    }[sort.sort_by]

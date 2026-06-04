@@ -8,12 +8,14 @@ from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.email.constants import EmailApiErrorCode
 from app.features.email.messages import get_message
 from app.features.email.models import EmailSender
+from app.features.email.query_params import EmailSenderFilters
 from app.features.email.schemas import (
     EmailSenderCreate,
     EmailSenderResponse,
     EmailSenderUpdate,
 )
 from app.features.nat.pagination import PaginationParams, build_paginated_response
+from app.features.nat.query_params import SortParams
 from app.features.nat.schemas.pagination import PaginatedResponse
 
 
@@ -48,10 +50,14 @@ class EmailSenderService:
 
     async def list(
         self,
+        filters: EmailSenderFilters,
+        sort: SortParams,
         pagination: PaginationParams,
     ) -> PaginatedResponse[EmailSenderResponse]:
-        total = await self._uow.email_senders.count_all()
-        entities = await self._uow.email_senders.list_ordered(
+        total = await self._uow.email_senders.count_filtered(filters)
+        entities = await self._uow.email_senders.list_filtered(
+            filters,
+            sort,
             limit=pagination.limit,
             offset=pagination.offset,
         )
