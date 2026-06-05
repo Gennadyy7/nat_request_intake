@@ -40,8 +40,17 @@ class SmtpMailClient:
         if self._client is not None:
             return
 
+        if settings.SMTP_PORT is None:
+            raise SmtpClientError('SMTP configuration invalid: SMTP_PORT is not set')
+        if settings.SMTP_USE_SSL is None:
+            raise SmtpClientError('SMTP configuration invalid: SMTP_USE_SSL is not set')
+        if settings.SMTP_USE_STARTTLS is None:
+            raise SmtpClientError(
+                'SMTP configuration invalid: SMTP_USE_STARTTLS is not set'
+            )
+
         use_tls = settings.SMTP_USE_SSL
-        start_tls = not use_tls
+        start_tls = settings.SMTP_USE_STARTTLS
         client = aiosmtplib.SMTP(
             hostname=settings.IMAP_SERVER,
             port=settings.SMTP_PORT,
@@ -60,15 +69,17 @@ class SmtpMailClient:
                 f'server={settings.IMAP_SERVER} '
                 f'port={settings.SMTP_PORT} '
                 f'use_ssl={settings.SMTP_USE_SSL} '
+                f'use_starttls={settings.SMTP_USE_STARTTLS} '
                 f'timeout_seconds={settings.IMAP_TIMEOUT_SECONDS}'
             ) from exc
 
         self._client = client
         logger.info(
-            'SMTP connected: server={} port={} use_ssl={}',
+            'SMTP connected: server={} port={} use_ssl={} use_starttls={}',
             settings.IMAP_SERVER,
             settings.SMTP_PORT,
             settings.SMTP_USE_SSL,
+            settings.SMTP_USE_STARTTLS,
         )
 
     async def disconnect(self) -> None:
