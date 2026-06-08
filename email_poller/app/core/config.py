@@ -1,6 +1,6 @@
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import EmailStr, Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     IMAP_MAILBOX: str
     EMAIL_POLL_INTERVAL_SECONDS: int = Field(ge=1)
 
+    EMAIL_REPLY_ENABLED: bool
+    EMAIL_REPLY_TO: EmailStr
+    SMTP_PORT: int | None = Field(default=None, ge=1, le=65535)
+    SMTP_USE_SSL: bool | None = None
+    SMTP_USE_STARTTLS: bool | None = None
+
     @model_validator(mode='after')
     def validate_db_config(self) -> Self:
         if self.db_url_env:
@@ -69,6 +75,34 @@ class Settings(BaseSettings):
             raise ValueError(
                 f'Database configuration incomplete. DB_URL is not set. '
                 f'Required environment variables: {", ".join(missing)}'
+            )
+
+        return self
+
+    @model_validator(mode='after')
+    def validate_smtp_config(self) -> Self:
+        if not self.EMAIL_REPLY_ENABLED:
+            return self
+
+        missing = [
+            name
+            for name, value in {
+                'SMTP_PORT': self.SMTP_PORT,
+                'SMTP_USE_SSL': self.SMTP_USE_SSL,
+                'SMTP_USE_STARTTLS': self.SMTP_USE_STARTTLS,
+            }.items()
+            if value is None
+        ]
+        if missing:
+            raise ValueError(
+                'SMTP configuration incomplete. EMAIL_REPLY_ENABLED=true. '
+                f'Required environment variables: {", ".join(missing)}'
+            )
+
+        if self.SMTP_USE_SSL is True and self.SMTP_USE_STARTTLS is True:
+            raise ValueError(
+                'SMTP configuration invalid. SMTP_USE_SSL and SMTP_USE_STARTTLS '
+                'cannot both be true.'
             )
 
         return self

@@ -127,6 +127,15 @@ class EmailMessage(Base, TimestampMixin):
         comment='Error message from IntakeResponse when status is rejected',
     )
 
+    reply_status: Mapped[str | None] = mapped_column(
+        String(16),
+        nullable=True,
+        index=True,
+        comment=(
+            'Outbound reply delivery status: sent, failed, or null if not applicable'
+        ),
+    )
+
     __table_args__ = (
         {
             'comment': 'Audit log of emails processed by the IMAP poller',

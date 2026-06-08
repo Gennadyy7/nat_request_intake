@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.features.email.constants import EmailProcessingStatus
+from app.features.email.constants import EmailProcessingStatus, EmailReplyStatus
 
 
 def normalize_email(value: str) -> str:
@@ -84,6 +84,7 @@ class EmailMessageResponse(BaseModel):
     nat_intake_id: UUID | None
     error_code: str | None
     error_message: str | None
+    reply_status: EmailReplyStatus | None
     created_at: datetime
     updated_at: datetime
 
@@ -98,4 +99,5 @@ class EmailMessageListItem(BaseModel):
     received_at: datetime
     processing_status: EmailProcessingStatus
     nat_intake_id: UUID | None
+    reply_status: EmailReplyStatus | None
     created_at: datetime

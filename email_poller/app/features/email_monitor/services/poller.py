@@ -8,12 +8,15 @@ from app.core.unit_of_work.sqlalchemy import SQLAlchemyUnitOfWork
 from app.features.email.constants import (
     EMAIL_PARSE_FAILURE_SENDER,
     EmailProcessingStatus,
+    EmailReplyStatus,
     EmailSkipReason,
 )
 from app.features.email.messages import get_message
 from app.features.email.models import EmailMessage
 from app.features.email.schemas import normalize_email
 from app.features.nat.constants import IntakeStatus
+from app.features.nat.schemas.intake import IntakeResponse
+from email_poller.app.core.config import settings
 from email_poller.app.core.database import db_manager
 from email_poller.app.core.logging import get_logger
 from email_poller.app.core.nat_client import NatIntakeClient, NatIntakeTransportError
@@ -25,8 +28,17 @@ from email_poller.app.features.email_monitor.imap.parser import (
     ParsedIncomingEmail,
     parse_rfc822_message,
 )
+from email_poller.app.features.email_reply.service import EmailReplyService
 
 logger = get_logger(__name__)
+
+_INTAKE_STATUSES_REQUIRING_REPLY = frozenset(
+    {
+        IntakeStatus.ACCEPTED,
+        IntakeStatus.PARTIALLY_ACCEPTED,
+        IntakeStatus.REJECTED,
+    },
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,8 +51,13 @@ class _EmailAuditFields:
 
 
 class EmailPollService:
-    def __init__(self, nat_client: NatIntakeClient) -> None:
+    def __init__(
+        self,
+        nat_client: NatIntakeClient,
+        reply_service: EmailReplyService,
+    ) -> None:
         self._nat_client = nat_client
+        self._reply_service = reply_service
 
     async def poll_once(self) -> None:
         logger.info('Email poll cycle started')
@@ -226,6 +243,7 @@ class EmailPollService:
             intake.intake_id,
             intake.error_code is not None,
         )
+        reply_status = await self._resolve_reply_status(intake=intake, fields=fields)
         if intake.status in {IntakeStatus.ACCEPTED, IntakeStatus.PARTIALLY_ACCEPTED}:
             await self._persist_and_mark_seen(
                 imap,
@@ -235,6 +253,7 @@ class EmailPollService:
                 nat_intake_id=intake.intake_id,
                 error_code=None,
                 error_message=None,
+                reply_status=reply_status,
             )
             return
 
@@ -246,6 +265,24 @@ class EmailPollService:
             nat_intake_id=intake.intake_id,
             error_code=intake.error_code.value if intake.error_code else None,
             error_message=intake.message,
+            reply_status=reply_status,
+        )
+
+    async def _resolve_reply_status(
+        self,
+        *,
+        intake: IntakeResponse,
+        fields: _EmailAuditFields,
+    ) -> EmailReplyStatus | None:
+        if not settings.EMAIL_REPLY_ENABLED:
+            return None
+        if intake.status not in _INTAKE_STATUSES_REQUIRING_REPLY:
+            return None
+        return await self._reply_service.send_intake_reply(
+            intake=intake,
+            sender_email=fields.sender_email,
+            original_subject=fields.subject,
+            original_message_id=fields.message_id,
         )
 
     async def _is_duplicate(self, message_id: str) -> bool:
@@ -262,6 +299,7 @@ class EmailPollService:
         nat_intake_id: UUID | None,
         error_code: str | None,
         error_message: str | None,
+        reply_status: EmailReplyStatus | None = None,
     ) -> None:
         async with SQLAlchemyUnitOfWork(db_manager.session_factory) as uow:
             message = EmailMessage(
@@ -275,16 +313,18 @@ class EmailPollService:
                 nat_intake_id=nat_intake_id,
                 error_code=error_code,
                 error_message=error_message,
+                reply_status=reply_status.value if reply_status is not None else None,
             )
             await uow.email_messages.create(message)
             logger.info(
                 'DB persist: uid={} message_id={} processing_status={} '
-                'nat_intake_id={} error_code_present={}',
+                'nat_intake_id={} error_code_present={} reply_status={}',
                 uid,
                 fields.message_id,
                 processing_status.value,
                 nat_intake_id,
                 error_code is not None,
+                reply_status.value if reply_status is not None else None,
             )
             await uow.commit()
             logger.info('DB commit ok: uid={} message_id={}', uid, fields.message_id)
