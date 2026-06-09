@@ -69,7 +69,7 @@ def build_intake_reply_body(intake: IntakeResponse) -> str:
     if intake.status == IntakeStatus.REJECTED:
         lines.extend(
             [
-                f'Идентификатор приемки: {intake.intake_id}',
+                f'Идентификатор заявки: {intake.intake_id}',
                 f'Файл: {intake.file_name}',
                 f'Причина: {_rejected_reason(intake)}',
             ]
@@ -78,7 +78,7 @@ def build_intake_reply_body(intake: IntakeResponse) -> str:
 
     lines.extend(
         [
-            f'Идентификатор приемки: {intake.intake_id}',
+            f'Идентификатор заявки: {intake.intake_id}',
             f'Идентификатор пакета: {_format_batch_id(intake.batch_id)}',
             f'Файл: {intake.file_name}',
             f'Всего строк: {intake.total_data_rows}',
