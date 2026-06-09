@@ -76,8 +76,12 @@ def get_intake_query_service(
 
 def get_batch_query_service(
     uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
+    file_storage_service: Annotated[
+        FileStorageService,
+        Depends(get_file_storage_service),
+    ],
 ) -> BatchQueryService:
-    return BatchQueryService(uow=uow)
+    return BatchQueryService(uow=uow, file_storage=file_storage_service)
 
 
 def get_task_query_service(

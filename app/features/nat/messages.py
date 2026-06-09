@@ -61,6 +61,7 @@ MESSAGES: dict[str, str] = {
     # ApiErrorCode
     ApiErrorCode.INTAKE_NOT_FOUND: 'Запрос на загрузку не найден',
     ApiErrorCode.BATCH_NOT_FOUND: 'Пакет не найден',
+    ApiErrorCode.BATCH_FILE_NOT_FOUND: 'Исходный файл пакета не найден',
     ApiErrorCode.TASK_NOT_FOUND: 'Задача не найдена',
     ApiErrorCode.INVALID_FILTER_STATUS: 'Недопустимое значение фильтра статуса',
     ApiErrorCode.INVALID_FILTER_TASK_STATUS: (

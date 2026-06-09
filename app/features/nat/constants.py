@@ -73,12 +73,22 @@ class AllowedFileExtension(StrEnum):
     XLSX = '.xlsx'
 
 
+MEDIA_TYPE_BY_EXTENSION: Final[dict[AllowedFileExtension, str]] = {
+    AllowedFileExtension.CSV: 'text/csv; charset=utf-8',
+    AllowedFileExtension.TXT: 'text/plain; charset=utf-8',
+    AllowedFileExtension.XLSX: (
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    ),
+}
+
+
 TASK_FILTER_NULL_SENTINEL: Final[str] = 'null'
 
 
 class ApiErrorCode(StrEnum):
     INTAKE_NOT_FOUND = 'INTAKE_NOT_FOUND'
     BATCH_NOT_FOUND = 'BATCH_NOT_FOUND'
+    BATCH_FILE_NOT_FOUND = 'BATCH_FILE_NOT_FOUND'
     TASK_NOT_FOUND = 'TASK_NOT_FOUND'
     INVALID_FILTER_STATUS = 'INVALID_FILTER_STATUS'
     INVALID_FILTER_TASK_STATUS = 'INVALID_FILTER_TASK_STATUS'

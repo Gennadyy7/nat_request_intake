@@ -1,3 +1,6 @@
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
 from uuid import UUID
 
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
@@ -6,11 +9,31 @@ from app.features.nat.query_params import NatBatchFilters, SortParams
 from app.features.nat.repository_records import NatBatchDetailRecord, NatBatchListRecord
 from app.features.nat.schemas.batch_list import NatBatchDetail, NatBatchListItem
 from app.features.nat.schemas.pagination import PaginatedResponse
+from app.features.nat.services.persistence.file_storage import FileStorageService
+
+
+@dataclass(frozen=True, slots=True)
+class BatchSourceFileDescriptor:
+    path: Path
+    download_filename: str
+    media_type: str
+
+
+@dataclass(frozen=True, slots=True)
+class BatchSourceFileResolveResult:
+    status: Literal['ok', 'batch_not_found', 'file_not_found']
+    descriptor: BatchSourceFileDescriptor | None = None
 
 
 class BatchQueryService:
-    def __init__(self, uow: UnitOfWorkProtocol) -> None:
+    def __init__(
+        self,
+        *,
+        uow: UnitOfWorkProtocol,
+        file_storage: FileStorageService,
+    ) -> None:
         self._uow = uow
+        self._file_storage = file_storage
 
     async def list_batches(
         self,
@@ -39,6 +62,29 @@ class BatchQueryService:
         if record is None:
             return None
         return self._to_detail(record)
+
+    async def resolve_source_file(
+        self,
+        batch_id: UUID,
+    ) -> BatchSourceFileResolveResult:
+        record = await self._uow.nat_batches.get_detail_by_id(batch_id)
+        if record is None:
+            return BatchSourceFileResolveResult(status='batch_not_found')
+
+        safe_path = self._file_storage.resolve_safe_path(record.batch.file_name)
+        if safe_path is None or not self._file_storage.is_readable_file(safe_path):
+            return BatchSourceFileResolveResult(status='file_not_found')
+
+        return BatchSourceFileResolveResult(
+            status='ok',
+            descriptor=BatchSourceFileDescriptor(
+                path=safe_path,
+                download_filename=record.original_file_name,
+                media_type=self._file_storage.resolve_media_type(
+                    record.original_file_name,
+                ),
+            ),
+        )
 
     def _to_list_item(self, record: NatBatchListRecord) -> NatBatchListItem:
         batch = record.batch

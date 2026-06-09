@@ -2,7 +2,7 @@ from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi_keycloak_middleware import get_user
 from pydantic import EmailStr
 
@@ -207,6 +207,52 @@ async def get_batch(
             },
         )
     return detail
+
+
+@router.get(
+    '/batches/{batch_id}/file',
+    response_class=FileResponse,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            'description': 'Batch or source file not found',
+        },
+    },
+)
+async def download_batch_file(
+    batch_id: UUID,
+    _user: Annotated[User, Depends(get_user)],
+    query_service: Annotated[BatchQueryService, Depends(get_batch_query_service)],
+) -> FileResponse:
+    result = await query_service.resolve_source_file(batch_id)
+    if result.status == 'batch_not_found':
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                'error_code': ApiErrorCode.BATCH_NOT_FOUND,
+                'message': get_message(ApiErrorCode.BATCH_NOT_FOUND),
+                'batch_id': str(batch_id),
+            },
+        )
+    if result.status == 'file_not_found':
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                'error_code': ApiErrorCode.BATCH_FILE_NOT_FOUND,
+                'message': get_message(ApiErrorCode.BATCH_FILE_NOT_FOUND),
+                'batch_id': str(batch_id),
+            },
+        )
+    descriptor = result.descriptor
+    # status 'ok' always sets descriptor; this guards the impossible case for type checkers.
+    if descriptor is None:
+        raise RuntimeError(
+            'Batch file descriptor is required when resolve status is ok'
+        )
+    return FileResponse(
+        path=descriptor.path,
+        filename=descriptor.download_filename,
+        media_type=descriptor.media_type,
+    )
 
 
 @router.get('/tasks', response_model=PaginatedResponse[NatTaskListItem])
