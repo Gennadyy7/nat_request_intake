@@ -113,6 +113,24 @@ class ImapMailboxClient:
         logger.debug('IMAP UID SEARCH UNSEEN: uids={}', uids[:50])
         return uids
 
+    async def fetch_header_fields_peek(self, uid: str) -> bytes:
+        client = self._require_client()
+        logger.debug('IMAP UID FETCH header fields: uid={}', uid)
+        response = await client.uid(
+            'FETCH',
+            uid,
+            '(BODY.PEEK[HEADER.FIELDS (FROM MESSAGE-ID DATE)])',
+        )
+        self._check_response(
+            response,
+            operation=f'UID FETCH header fields uid={uid}',
+        )
+        payload = _extract_fetch_payload(response)
+        if not payload:
+            raise ImapClientError(f'Empty header FETCH payload for uid={uid}')
+        logger.debug('IMAP UID FETCH header fields: uid={} bytes={}', uid, len(payload))
+        return payload
+
     async def fetch_rfc822(self, uid: str) -> bytes:
         client = self._require_client()
         logger.debug('IMAP UID FETCH: uid={}', uid)
