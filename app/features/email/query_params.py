@@ -5,10 +5,10 @@ from typing import Final
 from app.features.email.constants import EmailProcessingStatus, EmailReplyStatus
 
 EMAIL_SENDER_SORT_COLUMNS: Final[frozenset[str]] = frozenset(
-    {'email', 'created_at', 'updated_at'}
+    {'email', 'name', 'created_at', 'updated_at'}
 )
 EMAIL_MESSAGE_SORT_COLUMNS: Final[frozenset[str]] = frozenset(
-    {'received_at', 'created_at', 'updated_at'}
+    {'received_at', 'sender_email'}
 )
 
 

@@ -44,6 +44,7 @@ def build_email_message_filter_clauses(
 def sender_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:
     return {
         'email': EmailSender.email,
+        'name': EmailSender.name,
         'created_at': EmailSender.created_at,
         'updated_at': EmailSender.updated_at,
     }[sort.sort_by]
@@ -52,6 +53,5 @@ def sender_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:
 def message_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:
     return {
         'received_at': EmailMessage.received_at,
-        'created_at': EmailMessage.created_at,
-        'updated_at': EmailMessage.updated_at,
+        'sender_email': EmailMessage.sender_email,
     }[sort.sort_by]
