@@ -1,10 +1,12 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class NatTaskListItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     id: UUID
     batch_id: UUID
     nat_request_id: int | None = None
@@ -22,12 +24,14 @@ class NatTaskListItem(BaseModel):
     nat_response_file: str | None = None
     count_of_lines: str | None = None
     file_size: str | None = None
-    error_message: str | None = None
+    error: str | None = Field(default=None, validation_alias='error_message')
     created_at: datetime
     updated_at: datetime
 
 
 class NatTaskDetail(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
     id: UUID
     batch_id: UUID
     nat_request_id: int | None = None
@@ -45,6 +49,6 @@ class NatTaskDetail(BaseModel):
     nat_response_file: str | None = None
     count_of_lines: str | None = None
     file_size: str | None = None
-    error_message: str | None = None
+    error: str | None = Field(default=None, validation_alias='error_message')
     created_at: datetime
     updated_at: datetime

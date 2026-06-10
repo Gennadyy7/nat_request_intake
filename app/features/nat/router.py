@@ -136,7 +136,7 @@ async def get_intake(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.INTAKE_NOT_FOUND,
+                'code': ApiErrorCode.INTAKE_NOT_FOUND,
                 'message': get_message(ApiErrorCode.INTAKE_NOT_FOUND),
                 'intake_id': str(intake_id),
             },
@@ -167,7 +167,7 @@ async def list_intake_row_errors(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.INTAKE_NOT_FOUND,
+                'code': ApiErrorCode.INTAKE_NOT_FOUND,
                 'message': get_message(ApiErrorCode.INTAKE_NOT_FOUND),
                 'intake_id': str(intake_id),
             },
@@ -201,7 +201,7 @@ async def get_batch(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.BATCH_NOT_FOUND,
+                'code': ApiErrorCode.BATCH_NOT_FOUND,
                 'message': get_message(ApiErrorCode.BATCH_NOT_FOUND),
                 'batch_id': str(batch_id),
             },
@@ -228,7 +228,7 @@ async def download_batch_file(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.BATCH_NOT_FOUND,
+                'code': ApiErrorCode.BATCH_NOT_FOUND,
                 'message': get_message(ApiErrorCode.BATCH_NOT_FOUND),
                 'batch_id': str(batch_id),
             },
@@ -237,7 +237,7 @@ async def download_batch_file(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.BATCH_FILE_NOT_FOUND,
+                'code': ApiErrorCode.BATCH_FILE_NOT_FOUND,
                 'message': get_message(ApiErrorCode.BATCH_FILE_NOT_FOUND),
                 'batch_id': str(batch_id),
             },
@@ -281,7 +281,7 @@ async def get_task(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.TASK_NOT_FOUND,
+                'code': ApiErrorCode.TASK_NOT_FOUND,
                 'message': get_message(ApiErrorCode.TASK_NOT_FOUND),
                 'task_id': str(task_id),
             },

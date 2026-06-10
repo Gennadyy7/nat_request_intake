@@ -48,7 +48,7 @@ class EmailMessageQueryService:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': EmailApiErrorCode.MESSAGE_NOT_FOUND,
+                'code': EmailApiErrorCode.MESSAGE_NOT_FOUND,
                 'message': get_message(EmailApiErrorCode.MESSAGE_NOT_FOUND),
                 'message_id': str(message_id),
             },

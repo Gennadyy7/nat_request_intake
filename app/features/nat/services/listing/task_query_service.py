@@ -41,28 +41,7 @@ class TaskQueryService:
         return self._to_detail(task)
 
     def _to_list_item(self, task: NatTask) -> NatTaskListItem:
-        return NatTaskListItem(
-            id=task.id,
-            batch_id=task.batch_id,
-            nat_request_id=task.nat_request_id,
-            datetime_from=task.datetime_from,
-            datetime_to=task.datetime_to,
-            src_xlated=task.src_xlated,
-            src_port_xlated=task.src_port_xlated,
-            src=task.src,
-            src_port=task.src_port,
-            dst=task.dst,
-            dst_port=task.dst_port,
-            region=task.region,
-            status=task.status,
-            progress=task.progress,
-            nat_response_file=task.nat_response_file,
-            count_of_lines=task.count_of_lines,
-            file_size=task.file_size,
-            error_message=task.error_message,
-            created_at=task.created_at,
-            updated_at=task.updated_at,
-        )
+        return NatTaskListItem.model_validate(task)
 
     def _to_detail(self, task: NatTask) -> NatTaskDetail:
         return NatTaskDetail.model_validate(self._to_list_item(task).model_dump())

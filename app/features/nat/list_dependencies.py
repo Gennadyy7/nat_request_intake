@@ -85,7 +85,7 @@ def get_nat_intake_filters(
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={
-                    'error_code': ApiErrorCode.INVALID_FILTER_STATUS,
+                    'code': ApiErrorCode.INVALID_FILTER_STATUS,
                     'message': get_message(ApiErrorCode.INVALID_FILTER_STATUS),
                     'filter_status': filter_status,
                     'allowed': [member.value for member in IntakeStatus],
@@ -127,7 +127,7 @@ def get_nat_intake_row_errors_sort_order(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
-                'error_code': ApiErrorCode.INVALID_SORT_ORDER,
+                'code': ApiErrorCode.INVALID_SORT_ORDER,
                 'message': get_message(ApiErrorCode.INVALID_SORT_ORDER),
                 'sort_order': sort_order,
                 'allowed': ['asc', 'desc'],

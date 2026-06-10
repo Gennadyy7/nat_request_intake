@@ -81,7 +81,7 @@ def resolve_sort_params(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
-                'error_code': ApiErrorCode.INVALID_SORT_BY,
+                'code': ApiErrorCode.INVALID_SORT_BY,
                 'message': get_message(ApiErrorCode.INVALID_SORT_BY),
                 'sort_by': resolved_sort_by,
                 'allowed': sorted(allowed_columns),
@@ -94,7 +94,7 @@ def resolve_sort_params(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
-                'error_code': ApiErrorCode.INVALID_SORT_ORDER,
+                'code': ApiErrorCode.INVALID_SORT_ORDER,
                 'message': get_message(ApiErrorCode.INVALID_SORT_ORDER),
                 'sort_order': sort_order,
                 'allowed': ['asc', 'desc'],

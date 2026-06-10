@@ -137,7 +137,7 @@ class IntakeService:
                 row_errors.append(
                     RowErrorResponse(
                         row_number=error.row_number,
-                        error_code=error.error_code,
+                        code=error.error_code,
                         column=error.column,
                         message=get_message(error.error_code),
                     )
@@ -170,7 +170,7 @@ class IntakeService:
             row_errors.append(
                 RowErrorResponse(
                     row_number=dedup_error.row_number,
-                    error_code=dedup_error.error_code,
+                    code=dedup_error.error_code,
                     column=None,
                     message=get_message(dedup_error.error_code),
                 )
@@ -201,7 +201,7 @@ class IntakeService:
                 row_errors.append(
                     RowErrorResponse(
                         row_number=transform_error.row_number,
-                        error_code=transform_error.error_code,
+                        code=transform_error.error_code,
                         column=transform_error.column,
                         message=get_message(transform_error.error_code),
                     )
@@ -234,7 +234,7 @@ class IntakeService:
             row_errors.append(
                 RowErrorResponse(
                     row_number=registration_error.row_number,
-                    error_code=registration_error.error_code,
+                    code=registration_error.error_code,
                     column=None,
                     message=get_message(registration_error.error_code),
                 )
@@ -346,7 +346,7 @@ class IntakeService:
                 id=uuid4(),
                 intake_id=intake_id,
                 row_number=error.row_number,
-                error_code=_row_error_code_value(error.error_code),
+                error_code=_row_error_code_value(error.code),
                 column=error.column.value if error.column is not None else None,
             )
             for error in row_errors
@@ -432,7 +432,7 @@ class IntakeService:
             total_data_rows=total_data_rows,
             valid_rows=valid_rows,
             rejected_rows=rejected_rows,
-            error_code=error_code,
+            code=error_code,
             message=get_message(error_code) if error_code is not None else None,
         )
 

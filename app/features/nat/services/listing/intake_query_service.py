@@ -93,7 +93,7 @@ class IntakeQueryService:
             sender_email=intake.sender_email,
             file_name=intake.file_name,
             status=IntakeStatus(intake.status),
-            error_code=error_code,
+            code=error_code,
             message=get_message(error_code) if error_code is not None else None,
             batch_id=record.batch_id,
             created_at=intake.created_at,
@@ -109,7 +109,7 @@ class IntakeQueryService:
         error_code = _parse_row_error_code(error.error_code)
         return NatIntakeRowErrorItem(
             row_number=error.row_number,
-            error_code=error_code,
+            code=error_code,
             column=column,
             message=get_message(error_code),
         )

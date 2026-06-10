@@ -17,7 +17,7 @@ class NatIntakeListItem(BaseModel):
     sender_email: EmailStr
     file_name: str
     status: IntakeStatus
-    error_code: ValidationErrorCode | None = None
+    code: ValidationErrorCode | None = None
     message: str | None = None
     batch_id: UUID | None = None
     created_at: datetime
@@ -29,7 +29,7 @@ class NatIntakeDetail(BaseModel):
     sender_email: EmailStr
     file_name: str
     status: IntakeStatus
-    error_code: ValidationErrorCode | None = None
+    code: ValidationErrorCode | None = None
     message: str | None = None
     batch_id: UUID | None = None
     created_at: datetime
@@ -38,7 +38,7 @@ class NatIntakeDetail(BaseModel):
 
 class NatIntakeRowErrorItem(BaseModel):
     row_number: int = Field(ge=1)
-    error_code: RowErrorCode
+    code: RowErrorCode
     column: InputColumnName | None = None
     message: str | None = None
 

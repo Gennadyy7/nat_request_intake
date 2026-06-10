@@ -12,7 +12,7 @@ from app.features.nat.constants import (
 
 class RowErrorResponse(BaseModel):
     row_number: int = Field(ge=1)
-    error_code: RowErrorCode
+    code: RowErrorCode
     column: InputColumnName | None = None
     message: str | None = None
 
@@ -26,5 +26,5 @@ class IntakeResponse(BaseModel):
     total_data_rows: int = Field(ge=0)
     valid_rows: int = Field(ge=0)
     rejected_rows: int = Field(ge=0)
-    error_code: ValidationErrorCode | None = None
+    code: ValidationErrorCode | None = None
     message: str | None = None

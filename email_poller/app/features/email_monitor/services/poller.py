@@ -280,7 +280,7 @@ class EmailPollService:
             call_result.status_code,
             intake.status,
             intake.intake_id,
-            intake.error_code is not None,
+            intake.code is not None,
         )
         reply_status = await self._resolve_reply_status(intake=intake, fields=fields)
         if intake.status in {IntakeStatus.ACCEPTED, IntakeStatus.PARTIALLY_ACCEPTED}:
@@ -302,7 +302,7 @@ class EmailPollService:
             fields,
             processing_status=EmailProcessingStatus.REJECTED,
             nat_intake_id=intake.intake_id,
-            error_code=intake.error_code.value if intake.error_code else None,
+            error_code=intake.code.value if intake.code else None,
             error_message=intake.message,
             reply_status=reply_status,
         )

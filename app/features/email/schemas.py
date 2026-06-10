@@ -52,27 +52,8 @@ class EmailSenderResponse(BaseModel):
     updated_at: datetime
 
 
-class EmailMessageCreate(BaseModel):
-    message_id: str = Field(min_length=1, max_length=1000)
-    sender_email: EmailStr
-    subject: str | None = Field(default=None, max_length=1000)
-    body: str | None = None
-    received_at: datetime
-    processing_status: EmailProcessingStatus
-    nat_intake_id: UUID | None = None
-    error_code: str | None = Field(default=None, max_length=64)
-    error_message: str | None = None
-
-    @field_validator('sender_email', mode='before')
-    @classmethod
-    def validate_sender_email(cls, value: object) -> str:
-        if not isinstance(value, str):
-            raise TypeError('sender_email must be a string')
-        return normalize_email(value)
-
-
 class EmailMessageResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
     id: UUID
     message_id: str
@@ -82,8 +63,8 @@ class EmailMessageResponse(BaseModel):
     received_at: datetime
     processing_status: EmailProcessingStatus
     nat_intake_id: UUID | None
-    error_code: str | None
-    error_message: str | None
+    code: str | None = Field(default=None, validation_alias='error_code')
+    message: str | None = Field(default=None, validation_alias='error_message')
     reply_status: EmailReplyStatus | None
     created_at: datetime
     updated_at: datetime
