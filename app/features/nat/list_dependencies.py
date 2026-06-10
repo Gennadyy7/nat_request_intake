@@ -71,6 +71,7 @@ def get_nat_task_sort_params(
 
 
 def get_nat_intake_filters(
+    filter_intake_id: Annotated[UUID | None, Query()] = None,
     filter_sender_email: Annotated[str | None, Query()] = None,
     filter_file_name: Annotated[str | None, Query()] = None,
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
@@ -92,6 +93,7 @@ def get_nat_intake_filters(
                 },
             ) from exc
     return NatIntakeFilters(
+        intake_id=filter_intake_id,
         sender_email=filter_sender_email,
         file_name=filter_file_name,
         created_at_from=filter_created_at_from,
@@ -101,6 +103,7 @@ def get_nat_intake_filters(
 
 
 def get_nat_batch_filters(
+    filter_batch_id: Annotated[UUID | None, Query()] = None,
     filter_sender_email: Annotated[str | None, Query()] = None,
     filter_file_name: Annotated[str | None, Query()] = None,
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
@@ -109,6 +112,7 @@ def get_nat_batch_filters(
     filter_row_count_max: Annotated[int | None, Query(ge=0)] = None,
 ) -> NatBatchFilters:
     return NatBatchFilters(
+        batch_id=filter_batch_id,
         sender_email=filter_sender_email,
         file_name=filter_file_name,
         created_at_from=filter_created_at_from,

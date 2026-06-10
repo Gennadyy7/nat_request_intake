@@ -31,6 +31,8 @@ def build_intake_filter_clauses(
         clauses.append(NatIntake.created_at <= filters.created_at_to)
     if filters.status is not None:
         clauses.append(NatIntake.status == filters.status.value)
+    if filters.intake_id is not None:
+        clauses.append(NatIntake.id == filters.intake_id)
     return clauses
 
 
@@ -52,6 +54,8 @@ def build_batch_filter_clauses(
         clauses.append(NatBatch.row_count >= filters.row_count_min)
     if filters.row_count_max is not None:
         clauses.append(NatBatch.row_count <= filters.row_count_max)
+    if filters.batch_id is not None:
+        clauses.append(NatBatch.id == filters.batch_id)
     return clauses
 
 

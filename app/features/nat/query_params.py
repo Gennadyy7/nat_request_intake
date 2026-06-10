@@ -26,6 +26,7 @@ class SortParams:
 
 @dataclass(frozen=True, slots=True)
 class NatIntakeFilters:
+    intake_id: UUID | None = None
     sender_email: str | None = None
     file_name: str | None = None
     created_at_from: datetime | None = None
@@ -35,6 +36,7 @@ class NatIntakeFilters:
 
 @dataclass(frozen=True, slots=True)
 class NatBatchFilters:
+    batch_id: UUID | None = None
     sender_email: str | None = None
     file_name: str | None = None
     created_at_from: datetime | None = None
