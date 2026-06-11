@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Literal
 from uuid import UUID, uuid4
 
 from app.core.unit_of_work.sqlalchemy import SQLAlchemyUnitOfWork
@@ -21,6 +22,8 @@ from nat_task_status_worker.app.features.task_status.schemas import (
 
 logger = get_logger(__name__)
 
+TaskOutcome = Literal['success', 'transient', 'permanent']
+
 
 @dataclass(frozen=True, slots=True)
 class WorkerCycleStats:
@@ -29,6 +32,20 @@ class WorkerCycleStats:
     dispatch_transient_errors: int = 0
     poll_transient_errors: int = 0
     dispatch_permanent_errors: int = 0
+    poll_permanent_errors: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class _DispatchCycleStats:
+    dispatched: int = 0
+    dispatch_transient_errors: int = 0
+    dispatch_permanent_errors: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class _PollCycleStats:
+    polled: int = 0
+    poll_transient_errors: int = 0
     poll_permanent_errors: int = 0
 
 
@@ -68,9 +85,12 @@ class NatTaskStatusWorkerService:
         return settings.NAT_TASK_STATUS_WORKER_BATCH_LIMIT
 
     async def _process_dispatch_queue(
-        self, batch_limit: int | None
-    ) -> WorkerCycleStats:
-        stats = WorkerCycleStats()
+        self,
+        batch_limit: int | None,
+    ) -> _DispatchCycleStats:
+        dispatched = 0
+        dispatch_transient_errors = 0
+        dispatch_permanent_errors = 0
         processed = 0
         while True:
             if batch_limit is not None and processed >= batch_limit:
@@ -79,37 +99,26 @@ class NatTaskStatusWorkerService:
             if outcome is None:
                 break
             processed += 1
-            if outcome == 'success':
-                stats = WorkerCycleStats(
-                    dispatched=stats.dispatched + 1,
-                    polled=stats.polled,
-                    dispatch_transient_errors=stats.dispatch_transient_errors,
-                    poll_transient_errors=stats.poll_transient_errors,
-                    dispatch_permanent_errors=stats.dispatch_permanent_errors,
-                    poll_permanent_errors=stats.poll_permanent_errors,
-                )
-            elif outcome == 'transient':
-                stats = WorkerCycleStats(
-                    dispatched=stats.dispatched,
-                    polled=stats.polled,
-                    dispatch_transient_errors=stats.dispatch_transient_errors + 1,
-                    poll_transient_errors=stats.poll_transient_errors,
-                    dispatch_permanent_errors=stats.dispatch_permanent_errors,
-                    poll_permanent_errors=stats.poll_permanent_errors,
-                )
-            else:
-                stats = WorkerCycleStats(
-                    dispatched=stats.dispatched,
-                    polled=stats.polled,
-                    dispatch_transient_errors=stats.dispatch_transient_errors,
-                    poll_transient_errors=stats.poll_transient_errors,
-                    dispatch_permanent_errors=stats.dispatch_permanent_errors + 1,
-                    poll_permanent_errors=stats.poll_permanent_errors,
-                )
-        return stats
+            match outcome:
+                case 'success':
+                    dispatched += 1
+                case 'transient':
+                    dispatch_transient_errors += 1
+                case 'permanent':
+                    dispatch_permanent_errors += 1
+        return _DispatchCycleStats(
+            dispatched=dispatched,
+            dispatch_transient_errors=dispatch_transient_errors,
+            dispatch_permanent_errors=dispatch_permanent_errors,
+        )
 
-    async def _process_poll_queue(self, batch_limit: int | None) -> WorkerCycleStats:
-        stats = WorkerCycleStats()
+    async def _process_poll_queue(
+        self,
+        batch_limit: int | None,
+    ) -> _PollCycleStats:
+        polled = 0
+        poll_transient_errors = 0
+        poll_permanent_errors = 0
         processed = 0
         while True:
             if batch_limit is not None and processed >= batch_limit:
@@ -118,36 +127,20 @@ class NatTaskStatusWorkerService:
             if outcome is None:
                 break
             processed += 1
-            if outcome == 'success':
-                stats = WorkerCycleStats(
-                    dispatched=stats.dispatched,
-                    polled=stats.polled + 1,
-                    dispatch_transient_errors=stats.dispatch_transient_errors,
-                    poll_transient_errors=stats.poll_transient_errors,
-                    dispatch_permanent_errors=stats.dispatch_permanent_errors,
-                    poll_permanent_errors=stats.poll_permanent_errors,
-                )
-            elif outcome == 'transient':
-                stats = WorkerCycleStats(
-                    dispatched=stats.dispatched,
-                    polled=stats.polled,
-                    dispatch_transient_errors=stats.dispatch_transient_errors,
-                    poll_transient_errors=stats.poll_transient_errors + 1,
-                    dispatch_permanent_errors=stats.dispatch_permanent_errors,
-                    poll_permanent_errors=stats.poll_permanent_errors,
-                )
-            else:
-                stats = WorkerCycleStats(
-                    dispatched=stats.dispatched,
-                    polled=stats.polled,
-                    dispatch_transient_errors=stats.dispatch_transient_errors,
-                    poll_transient_errors=stats.poll_transient_errors,
-                    dispatch_permanent_errors=stats.dispatch_permanent_errors,
-                    poll_permanent_errors=stats.poll_permanent_errors + 1,
-                )
-        return stats
+            match outcome:
+                case 'success':
+                    polled += 1
+                case 'transient':
+                    poll_transient_errors += 1
+                case 'permanent':
+                    poll_permanent_errors += 1
+        return _PollCycleStats(
+            polled=polled,
+            poll_transient_errors=poll_transient_errors,
+            poll_permanent_errors=poll_permanent_errors,
+        )
 
-    async def _dispatch_one_task(self) -> str | None:
+    async def _dispatch_one_task(self) -> TaskOutcome | None:
         async with SQLAlchemyUnitOfWork(db_manager.session_factory) as uow:
             tasks = await uow.nat_tasks.claim_for_dispatch(1)
             if not tasks:
@@ -187,7 +180,7 @@ class NatTaskStatusWorkerService:
             )
             return 'transient'
 
-    async def _poll_one_task(self) -> str | None:
+    async def _poll_one_task(self) -> TaskOutcome | None:
         async with SQLAlchemyUnitOfWork(db_manager.session_factory) as uow:
             tasks = await uow.nat_tasks.claim_for_poll(1)
             if not tasks:
