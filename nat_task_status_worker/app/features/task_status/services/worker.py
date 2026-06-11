@@ -5,11 +5,11 @@ from datetime import UTC, datetime
 from typing import Literal
 from uuid import UUID, uuid4
 
-from app.core.unit_of_work.sqlalchemy import SQLAlchemyUnitOfWork
+from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.nat.models import NatTask, NatTaskResultFile
 from nat_task_status_worker.app.core.config import settings
-from nat_task_status_worker.app.core.database import db_manager
 from nat_task_status_worker.app.core.logging import get_logger
+from nat_task_status_worker.app.core.unit_of_work import unit_of_work
 from nat_task_status_worker.app.features.task_status.nat_webapi_client import (
     NatWebApiClient,
     NatWebApiPermanentError,
@@ -141,7 +141,7 @@ class NatTaskStatusWorkerService:
         )
 
     async def _dispatch_one_task(self) -> TaskOutcome | None:
-        async with SQLAlchemyUnitOfWork(db_manager.session_factory) as uow:
+        async with unit_of_work() as uow:
             tasks = await uow.nat_tasks.claim_for_dispatch(1)
             if not tasks:
                 return None
@@ -181,7 +181,7 @@ class NatTaskStatusWorkerService:
             return 'transient'
 
     async def _poll_one_task(self) -> TaskOutcome | None:
-        async with SQLAlchemyUnitOfWork(db_manager.session_factory) as uow:
+        async with unit_of_work() as uow:
             tasks = await uow.nat_tasks.claim_for_poll(1)
             if not tasks:
                 return None
@@ -231,7 +231,7 @@ class NatTaskStatusWorkerService:
 
     async def _apply_poll_success(
         self,
-        uow: SQLAlchemyUnitOfWork,
+        uow: UnitOfWorkProtocol,
         task: NatTask,
         payload: NatStatusResponse,
     ) -> None:
