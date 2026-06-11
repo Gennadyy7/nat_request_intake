@@ -36,6 +36,9 @@ poller = [
     "aioimaplib (>=2.0.1,<3.0.0)",
     "aiosmtplib (>=5.1.1,<6.0.0)",
 ]
+worker = [
+    "httpx (>=0.28.1,<0.29.0)",
+]
 dev = [
     "loguru-mypy (>=0.0.4,<0.0.5)",
     "ruff (>=0.15.12,<0.16.0)",
@@ -49,6 +52,10 @@ dev = [
 target-version = "py312"
 
 [tool.ruff.lint.per-file-ignores]
+"scripts/*.py" = ["PLC0415", "E402"]
+"nat_task_status_worker/app/features/task_status/nat_webapi_client.py" = ["PLC0415"]
+"nat_task_status_worker/app/features/task_status/utils/*.py" = ["PLC0415"]
+"app/features/nat/datetime_formatting.py" = ["PLC0415"]
 "app/features/nat/constants.py" = ["RUF001"]
 "app/features/email/messages.py" = ["RUF001"]
 "email_poller/app/features/email_reply/messages.py" = ["RUF001"]
@@ -82,7 +89,7 @@ disallow_incomplete_defs = true
 disallow_untyped_decorators = true
 disallow_any_generics = true
 mypy_path = ["."]
-files = ["app", "email_poller"]
+files = ["app", "email_poller", "nat_task_status_worker"]
 
 disallow_any_explicit = true
 

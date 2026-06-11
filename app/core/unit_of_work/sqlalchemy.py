@@ -15,6 +15,7 @@ from app.features.nat.repositories import (
     NatIntakeRepository,
     NatIntakeRowErrorRepository,
     NatTaskRepository,
+    NatTaskResultFileRepository,
 )
 
 logger = get_logger(__name__)
@@ -28,6 +29,7 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_intake_row_errors: NatIntakeRowErrorRepository | None = None
         self._nat_batches: NatBatchRepository | None = None
         self._nat_tasks: NatTaskRepository | None = None
+        self._nat_task_result_files: NatTaskResultFileRepository | None = None
         self._nat_dedup_keys: NatDedupKeyRepository | None = None
         self._email_senders: EmailSenderRepository | None = None
         self._email_messages: EmailMessageRepository | None = None
@@ -79,6 +81,18 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         return self._nat_tasks
 
     @property
+    def nat_task_result_files(self) -> NatTaskResultFileRepository:
+        if self._nat_task_result_files is None:
+            logger.error(
+                'Attempted to access nat_task_result_files repository outside of '
+                'context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._nat_task_result_files
+
+    @property
     def nat_dedup_keys(self) -> NatDedupKeyRepository:
         if self._nat_dedup_keys is None:
             logger.error(
@@ -122,6 +136,7 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_intake_row_errors = NatIntakeRowErrorRepository(self._session)
         self._nat_batches = NatBatchRepository(self._session)
         self._nat_tasks = NatTaskRepository(self._session)
+        self._nat_task_result_files = NatTaskResultFileRepository(self._session)
         self._nat_dedup_keys = NatDedupKeyRepository(self._session)
         self._email_senders = EmailSenderRepository(self._session)
         self._email_messages = EmailMessageRepository(self._session)

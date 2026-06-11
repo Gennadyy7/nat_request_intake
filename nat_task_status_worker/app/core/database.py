@@ -11,7 +11,7 @@ from app.features.nat.models import (  # noqa: F401
     NatTask,
     NatTaskResultFile,
 )
-from email_poller.app.core.config import settings
+from nat_task_status_worker.app.core.config import settings
 
 db_manager = DatabaseManager()
 

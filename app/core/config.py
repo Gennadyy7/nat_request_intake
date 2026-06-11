@@ -50,7 +50,7 @@ class Settings(BaseSettings):
 
     NAT_MAX_BATCH_ROWS: int = Field(ge=1)
     NAT_IDEMPOTENCY_WINDOW_MINUTES: int = Field(ge=1)
-    NAT_OUTPUT_DATETIME_FORMAT: str
+    NAT_TASK_DISPLAY_DATETIME_FORMAT: str
     NAT_INPUT_FIELD_SEPARATOR: str
     NAT_MISSING_FIELD_PLACEHOLDER: str
     NAT_UPLOAD_BASE_DIR: str = 'backend/uploads/nat'

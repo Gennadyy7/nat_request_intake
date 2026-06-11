@@ -1,11 +1,12 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass(frozen=True, slots=True)
 class TransformedRow:
     source_row_number: int
-    datetime_from: str
-    datetime_to: str
+    datetime_from: datetime
+    datetime_to: datetime
     src_xlated: str
     src_port_xlated: int | None
     src: str

@@ -3,11 +3,21 @@ from typing import Final
 
 
 class NatTaskStatus(IntEnum):
+    LOCAL_ABANDONED = -999
     CANCELLED = -20
     QUEUED = -1
     LAUNCHED = 10
     IN_PROGRESS = 20
     COMPLETED = 30
+
+
+NON_TERMINAL_NAT_STATUSES: Final[frozenset[int]] = frozenset(
+    {
+        NatTaskStatus.QUEUED,
+        NatTaskStatus.LAUNCHED,
+        NatTaskStatus.IN_PROGRESS,
+    }
+)
 
 
 class NatIpFieldName(StrEnum):

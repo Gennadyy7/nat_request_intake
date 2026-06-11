@@ -23,6 +23,7 @@ from app.features.nat.models import (  # noqa: F401
     NatIntake,
     NatIntakeRowError,
     NatTask,
+    NatTaskResultFile,
 )
 
 config = context.config

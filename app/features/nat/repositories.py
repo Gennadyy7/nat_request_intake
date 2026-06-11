@@ -2,14 +2,16 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, func, insert, select, text
+from sqlalchemy import delete, func, insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.elements import Label
 
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.repositories.sqlalchemy import SQLAlchemyRepository
+from app.features.nat.constants import NON_TERMINAL_NAT_STATUSES, NatTaskStatus
 from app.features.nat.domain.deduplication_key import DeduplicationKey
 from app.features.nat.domain.transformed_row import TransformedRow
 from app.features.nat.models import (
@@ -18,6 +20,7 @@ from app.features.nat.models import (
     NatIntake,
     NatIntakeRowError,
     NatTask,
+    NatTaskResultFile,
 )
 from app.features.nat.query_params import (
     NatBatchFilters,
@@ -51,6 +54,12 @@ logger = get_logger(__name__)
 _NAT_TASK_COPY_COLUMNS: list[str] = [
     attr.key for attr in NatTask.__mapper__.column_attrs
 ]
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
@@ -266,8 +275,8 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
                 uuid4(),  # id
                 batch_id,  # batch_id
                 None,  # nat_request_id
-                row.datetime_from,  # datetime_from
-                row.datetime_to,  # datetime_to
+                _as_utc(row.datetime_from),  # datetime_from
+                _as_utc(row.datetime_to),  # datetime_to
                 row.src_xlated,  # src_xlated
                 row.src_port_xlated,  # src_port_xlated
                 row.src,  # src
@@ -277,9 +286,7 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
                 row.region,  # region
                 None,  # status
                 None,  # progress
-                None,  # nat_response_file
                 None,  # count_of_lines
-                None,  # file_size
                 None,  # error_message
                 now,  # created_at
                 now,  # updated_at
@@ -330,6 +337,129 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
             statement = statement.where(*clauses)
         result = await self._session.execute(statement)
         return list(result.scalars().all())
+
+    async def get_by_id_with_result_files(self, task_id: UUID) -> NatTask | None:
+        statement = (
+            select(NatTask)
+            .where(NatTask.id == task_id)
+            .options(selectinload(NatTask.result_files))
+        )
+        result = await self._session.execute(statement)
+        return result.scalar_one_or_none()
+
+    async def claim_for_dispatch(self, limit: int | None) -> Sequence[NatTask]:
+        statement = (
+            select(NatTask)
+            .where(
+                NatTask.status.is_(None),
+                NatTask.error_message.is_(None),
+            )
+            .order_by(NatTask.created_at.asc())
+            .with_for_update(skip_locked=True)
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
+        result = await self._session.execute(statement)
+        return list(result.scalars().all())
+
+    async def claim_for_poll(self, limit: int | None) -> Sequence[NatTask]:
+        statement = (
+            select(NatTask)
+            .where(NatTask.status.in_(NON_TERMINAL_NAT_STATUSES))
+            .order_by(NatTask.created_at.asc())
+            .with_for_update(skip_locked=True)
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
+        result = await self._session.execute(statement)
+        return list(result.scalars().all())
+
+    async def update_after_send(
+        self,
+        task_id: UUID,
+        *,
+        nat_request_id: int,
+        status: int,
+    ) -> None:
+        await self._session.execute(
+            update(NatTask)
+            .where(NatTask.id == task_id)
+            .values(
+                nat_request_id=nat_request_id,
+                status=status,
+                updated_at=datetime.now(UTC),
+            )
+        )
+
+    async def mark_send_permanent_failure(
+        self,
+        task_id: UUID,
+        *,
+        error_message: str,
+    ) -> None:
+        await self._session.execute(
+            update(NatTask)
+            .where(NatTask.id == task_id)
+            .values(
+                error_message=error_message,
+                updated_at=datetime.now(UTC),
+            )
+        )
+
+    async def update_after_poll(
+        self,
+        task_id: UUID,
+        *,
+        status: int,
+        progress: str | None,
+        count_of_lines: str | None,
+    ) -> None:
+        await self._session.execute(
+            update(NatTask)
+            .where(NatTask.id == task_id)
+            .values(
+                status=status,
+                progress=progress,
+                count_of_lines=count_of_lines,
+                updated_at=datetime.now(UTC),
+            )
+        )
+
+    async def mark_poll_permanent_failure(
+        self,
+        task_id: UUID,
+        *,
+        error_message: str,
+    ) -> None:
+        await self._session.execute(
+            update(NatTask)
+            .where(NatTask.id == task_id)
+            .values(
+                status=NatTaskStatus.LOCAL_ABANDONED,
+                error_message=error_message,
+                updated_at=datetime.now(UTC),
+            )
+        )
+
+
+class NatTaskResultFileRepository(SQLAlchemyRepository[NatTaskResultFile, UUID]):
+    def __init__(self, session: AsyncSession):
+        super().__init__(model=NatTaskResultFile, session=session)
+
+    async def replace_for_task(
+        self,
+        task_id: UUID,
+        files: Sequence[NatTaskResultFile],
+    ) -> None:
+        await self._session.execute(
+            delete(NatTaskResultFile).where(NatTaskResultFile.task_id == task_id)
+        )
+        if files:
+            col_keys = [attr.key for attr in NatTaskResultFile.__mapper__.column_attrs]
+            await self._session.execute(
+                insert(NatTaskResultFile),
+                [{key: getattr(entity, key) for key in col_keys} for entity in files],
+            )
 
 
 class NatDedupKeyRepository(SQLAlchemyRepository[NatDedupKey, UUID]):
