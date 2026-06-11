@@ -14,7 +14,7 @@ from nat_task_status_worker.app.features.task_status.nat_webapi_client import (
     NatWebApiPermanentError,
     NatWebApiSuccess,
 )
-from nat_task_status_worker.app.features.task_status.response_models import (
+from nat_task_status_worker.app.features.task_status.schemas import (
     NatStatusResponse,
     NatWebApiFile,
 )

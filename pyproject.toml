@@ -52,10 +52,6 @@ dev = [
 target-version = "py312"
 
 [tool.ruff.lint.per-file-ignores]
-"scripts/*.py" = ["PLC0415", "E402"]
-"nat_task_status_worker/app/features/task_status/nat_webapi_client.py" = ["PLC0415"]
-"nat_task_status_worker/app/features/task_status/utils/*.py" = ["PLC0415"]
-"app/features/nat/datetime_formatting.py" = ["PLC0415"]
 "app/features/nat/constants.py" = ["RUF001"]
 "app/features/email/messages.py" = ["RUF001"]
 "email_poller/app/features/email_reply/messages.py" = ["RUF001"]

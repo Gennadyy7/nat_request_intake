@@ -7,17 +7,17 @@ import httpx
 from pydantic import BaseModel
 
 from app.features.nat.models import NatTask
-from nat_task_status_worker.app.core.config import Settings
+from nat_task_status_worker.app.core.config import settings
 from nat_task_status_worker.app.core.logging import get_logger
-from nat_task_status_worker.app.features.task_status.response_models import (
+from nat_task_status_worker.app.features.task_status.errors.extraction import (
+    extract_error_message,
+)
+from nat_task_status_worker.app.features.task_status.schemas import (
     NatSendResponse,
     NatStatusResponse,
 )
 from nat_task_status_worker.app.features.task_status.send_form_data import (
     build_send_form_data,
-)
-from nat_task_status_worker.app.features.task_status.utils.error_extraction import (
-    extract_error_message,
 )
 
 if TYPE_CHECKING:
@@ -27,12 +27,6 @@ logger = get_logger(__name__)
 
 NatWebApiAction = Literal['send', 'status']
 TResponse = TypeVar('TResponse', bound=BaseModel)
-
-
-def _settings() -> Settings:
-    from nat_task_status_worker.app.core.config import settings
-
-    return settings
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,18 +61,17 @@ class NatWebApiClient:
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
         self._owns_client = http_client is None
         self._client = http_client or httpx.AsyncClient()
-        self._timeout = float(_settings().NAT_WEBAPI_HTTP_TIMEOUT_SECONDS)
+        self._timeout = float(settings.NAT_WEBAPI_HTTP_TIMEOUT_SECONDS)
 
     async def send_task(self, task: NatTask) -> NatSendResult:
-        form_data = build_send_form_data_for_task(task)
+        form_data = build_send_form_data(task)
         return await self._post('send', form_data, NatSendResponse)
 
     async def get_task_status(self, nat_request_id: int) -> NatStatusResult:
-        worker_settings = _settings()
         form_data = {
             'ACTION': 'status',
-            'user': worker_settings.NAT_USER,
-            'psw': worker_settings.NAT_PASSWORD,
+            'user': settings.NAT_USER,
+            'psw': settings.NAT_PASSWORD,
             'id': str(nat_request_id),
         }
         return await self._post('status', form_data, NatStatusResponse)
@@ -108,7 +101,7 @@ class NatWebApiClient:
     ):
         try:
             response = await self._client.post(
-                _settings().NAT_WEBAPI_URL,
+                settings.NAT_WEBAPI_URL,
                 data=form_data,
                 timeout=self._timeout,
             )
@@ -154,7 +147,3 @@ class NatWebApiClient:
             )
 
         return NatWebApiSuccess(payload=payload)
-
-
-def build_send_form_data_for_task(task: NatTask) -> dict[str, str]:
-    return build_send_form_data(task, worker_settings=_settings())

@@ -3,10 +3,11 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
+from app.features.nat.constants import NON_TERMINAL_NAT_STATUSES
 
 
 class NatIntake(Base, TimestampMixin):
@@ -317,6 +318,16 @@ class NatTask(Base, TimestampMixin):
     )
 
     __table_args__ = (
+        Index(
+            'ix_nat_tasks_dispatch_queue',
+            'created_at',
+            postgresql_where=text('status IS NULL AND error_message IS NULL'),
+        ),
+        Index(
+            'ix_nat_tasks_poll_queue',
+            'created_at',
+            postgresql_where=status.in_(tuple(NON_TERMINAL_NAT_STATUSES)),
+        ),
         {
             'comment': 'Individual NAT tasks for each request in a batch file',
         },
