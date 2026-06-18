@@ -299,6 +299,30 @@ class NatTask(Base, TimestampMixin):
         comment='Number of lines in response (as returned by NAT, e.g., "12 345")',
     )
 
+    nat_file_id: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment='File ID from NAT API files[] response',
+    )
+
+    file_url: Mapped[str | None] = mapped_column(
+        String(2048),
+        nullable=True,
+        comment='Download URL from NAT API',
+    )
+
+    file_size: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+        comment='File size as returned by NAT API',
+    )
+
+    file_type: Mapped[str | None] = mapped_column(
+        String(32),
+        nullable=True,
+        comment='File type as returned by NAT API',
+    )
+
     error_message: Mapped[str | None] = mapped_column(
         Text,
         nullable=True,
@@ -308,13 +332,6 @@ class NatTask(Base, TimestampMixin):
     batch: Mapped[NatBatch] = relationship(
         'NatBatch',
         back_populates='tasks',
-    )
-
-    result_files: Mapped[list[NatTaskResultFile]] = relationship(
-        'NatTaskResultFile',
-        back_populates='task',
-        cascade='all, delete-orphan',
-        order_by='NatTaskResultFile.nat_file_id',
     )
 
     __table_args__ = (
@@ -341,62 +358,6 @@ class NatTask(Base, TimestampMixin):
             f'status={self.status}, '
             f'batch_id={self.batch_id})'
         )
-
-
-class NatTaskResultFile(Base, TimestampMixin):
-    __tablename__ = 'nat_task_result_files'
-
-    id: Mapped[UUID] = mapped_column(
-        primary_key=True,
-        default=uuid4,
-        comment='Primary key (UUID v4, generated automatically)',
-    )
-
-    task_id: Mapped[UUID] = mapped_column(
-        ForeignKey(
-            'nat_tasks.id',
-            name='fk_nat_task_result_files_task_id_nat_tasks',
-            ondelete='CASCADE',
-        ),
-        nullable=False,
-        index=True,
-        comment='Foreign key to parent NatTask',
-    )
-
-    nat_file_id: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        comment='File ID from NAT API files[] response',
-    )
-
-    file_url: Mapped[str] = mapped_column(
-        String(2048),
-        nullable=False,
-        comment='Download URL from NAT API',
-    )
-
-    file_size: Mapped[str | None] = mapped_column(
-        String(32),
-        nullable=True,
-        comment='File size as returned by NAT API',
-    )
-
-    file_type: Mapped[str | None] = mapped_column(
-        String(32),
-        nullable=True,
-        comment='File type as returned by NAT API',
-    )
-
-    task: Mapped[NatTask] = relationship(
-        'NatTask',
-        back_populates='result_files',
-    )
-
-    __table_args__ = (
-        {
-            'comment': 'Result files returned by NAT API for a completed or in-progress task',
-        },
-    )
 
 
 class NatDedupKey(Base, TimestampMixin):

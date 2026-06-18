@@ -5,7 +5,6 @@ from uuid import UUID, uuid4
 from sqlalchemy import delete, func, insert, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 from sqlalchemy.sql.elements import Label
 
 from app.core.config import settings
@@ -20,7 +19,6 @@ from app.features.nat.models import (
     NatIntake,
     NatIntakeRowError,
     NatTask,
-    NatTaskResultFile,
 )
 from app.features.nat.query_params import (
     NatBatchFilters,
@@ -287,6 +285,10 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
                 None,  # status
                 None,  # progress
                 None,  # count_of_lines
+                None,  # nat_file_id
+                None,  # file_url
+                None,  # file_size
+                None,  # file_type
                 None,  # error_message
                 now,  # created_at
                 now,  # updated_at
@@ -337,15 +339,6 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
             statement = statement.where(*clauses)
         result = await self._session.execute(statement)
         return list(result.scalars().all())
-
-    async def get_by_id_with_result_files(self, task_id: UUID) -> NatTask | None:
-        statement = (
-            select(NatTask)
-            .where(NatTask.id == task_id)
-            .options(selectinload(NatTask.result_files))
-        )
-        result = await self._session.execute(statement)
-        return result.scalar_one_or_none()
 
     async def claim_for_dispatch(self, limit: int | None) -> Sequence[NatTask]:
         statement = (
@@ -413,6 +406,10 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
         status: int,
         progress: str | None,
         count_of_lines: str | None,
+        nat_file_id: int | None,
+        file_url: str | None,
+        file_size: str | None,
+        file_type: str | None,
     ) -> None:
         await self._session.execute(
             update(NatTask)
@@ -421,6 +418,10 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
                 status=status,
                 progress=progress,
                 count_of_lines=count_of_lines,
+                nat_file_id=nat_file_id,
+                file_url=file_url,
+                file_size=file_size,
+                file_type=file_type,
                 updated_at=datetime.now(UTC),
             )
         )
@@ -440,26 +441,6 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
                 updated_at=datetime.now(UTC),
             )
         )
-
-
-class NatTaskResultFileRepository(SQLAlchemyRepository[NatTaskResultFile, UUID]):
-    def __init__(self, session: AsyncSession):
-        super().__init__(model=NatTaskResultFile, session=session)
-
-    async def replace_for_task(
-        self,
-        task_id: UUID,
-        files: Sequence[NatTaskResultFile],
-    ) -> None:
-        await self._session.execute(
-            delete(NatTaskResultFile).where(NatTaskResultFile.task_id == task_id)
-        )
-        if files:
-            col_keys = [attr.key for attr in NatTaskResultFile.__mapper__.column_attrs]
-            await self._session.execute(
-                insert(NatTaskResultFile),
-                [{key: getattr(entity, key) for key in col_keys} for entity in files],
-            )
 
 
 class NatDedupKeyRepository(SQLAlchemyRepository[NatDedupKey, UUID]):

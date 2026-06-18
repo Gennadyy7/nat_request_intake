@@ -11,7 +11,6 @@ from app.features.nat.repositories import (
     NatIntakeRepository,
     NatIntakeRowErrorRepository,
     NatTaskRepository,
-    NatTaskResultFileRepository,
 )
 
 
@@ -27,9 +26,6 @@ class UnitOfWorkProtocol(Protocol):
 
     @property
     def nat_tasks(self) -> NatTaskRepository: ...
-
-    @property
-    def nat_task_result_files(self) -> NatTaskResultFileRepository: ...
 
     @property
     def nat_dedup_keys(self) -> NatDedupKeyRepository: ...

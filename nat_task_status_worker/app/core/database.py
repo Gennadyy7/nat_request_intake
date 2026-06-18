@@ -9,7 +9,6 @@ from app.features.nat.models import (  # noqa: F401
     NatIntake,
     NatIntakeRowError,
     NatTask,
-    NatTaskResultFile,
 )
 from nat_task_status_worker.app.core.config import settings
 

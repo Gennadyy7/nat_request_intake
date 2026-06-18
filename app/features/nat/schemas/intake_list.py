@@ -21,7 +21,6 @@ class NatIntakeListItem(BaseModel):
     message: str | None = None
     batch_id: UUID | None = None
     created_at: datetime
-    updated_at: datetime
 
 
 class NatIntakeDetail(BaseModel):
@@ -33,7 +32,6 @@ class NatIntakeDetail(BaseModel):
     message: str | None = None
     batch_id: UUID | None = None
     created_at: datetime
-    updated_at: datetime
 
 
 class NatIntakeRowErrorItem(BaseModel):

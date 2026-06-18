@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Literal
-from uuid import UUID, uuid4
 
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
-from app.features.nat.models import NatTask, NatTaskResultFile
+from app.features.nat.models import NatTask
 from nat_task_status_worker.app.core.config import settings
 from nat_task_status_worker.app.core.logging import get_logger
 from nat_task_status_worker.app.core.unit_of_work import unit_of_work
@@ -235,33 +234,30 @@ class NatTaskStatusWorkerService:
         task: NatTask,
         payload: NatStatusResponse,
     ) -> None:
+        nat_file_id, file_url, file_size, file_type = _extract_file_fields(
+            payload.files
+        )
         await uow.nat_tasks.update_after_poll(
             task.id,
             status=payload.status,
             progress=payload.progress,
             count_of_lines=payload.count_of_lines,
+            nat_file_id=nat_file_id,
+            file_url=file_url,
+            file_size=file_size,
+            file_type=file_type,
         )
-        now = datetime.now(UTC)
-        result_files = [
-            _to_result_file_entity(task.id, file_item, now=now)
-            for file_item in payload.files
-        ]
-        await uow.nat_task_result_files.replace_for_task(task.id, result_files)
 
 
-def _to_result_file_entity(
-    task_id: UUID,
-    file_item: NatWebApiFile,
-    *,
-    now: datetime,
-) -> NatTaskResultFile:
-    return NatTaskResultFile(
-        id=uuid4(),
-        task_id=task_id,
-        nat_file_id=file_item.id,
-        file_url=file_item.file,
-        file_size=file_item.file_size,
-        file_type=file_item.type,
-        created_at=now,
-        updated_at=now,
-    )
+def _extract_file_fields(
+    files: Sequence[NatWebApiFile],
+) -> tuple[int | None, str | None, str | None, str | None]:
+    if not files:
+        return None, None, None, None
+    if len(files) > 1:
+        logger.warning(
+            'NAT returned multiple files for task status response, using first: count={}',
+            len(files),
+        )
+    file_item = files[0]
+    return file_item.id, file_item.file, file_item.file_size, file_item.type

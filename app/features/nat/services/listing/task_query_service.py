@@ -6,11 +6,7 @@ from app.features.nat.models import NatTask
 from app.features.nat.pagination import PaginationParams, build_paginated_response
 from app.features.nat.query_params import NatTaskFilters, SortParams
 from app.features.nat.schemas.pagination import PaginatedResponse
-from app.features.nat.schemas.task_list import (
-    NatTaskDetail,
-    NatTaskListItem,
-    NatTaskResultFileItem,
-)
+from app.features.nat.schemas.task_list import NatTaskDetail, NatTaskListItem
 
 
 class TaskQueryService:
@@ -40,7 +36,7 @@ class TaskQueryService:
         )
 
     async def get_task(self, task_id: UUID) -> NatTaskDetail | None:
-        task = await self._uow.nat_tasks.get_by_id_with_result_files(task_id)
+        task = await self._uow.nat_tasks.get_by_id(task_id)
         if task is None:
             return None
         return self._to_detail(task)
@@ -61,18 +57,16 @@ class TaskQueryService:
             region=task.region,
             status=task.status,
             progress=task.progress,
-            count_of_lines=task.count_of_lines,
             error=task.error_message,
             created_at=task.created_at,
-            updated_at=task.updated_at,
         )
 
     def _to_detail(self, task: NatTask) -> NatTaskDetail:
-        list_item = self._to_list_item(task)
         return NatTaskDetail(
-            **list_item.model_dump(),
-            files=[
-                NatTaskResultFileItem.model_validate(result_file)
-                for result_file in task.result_files
-            ],
+            **self._to_list_item(task).model_dump(),
+            count_of_lines=task.count_of_lines,
+            nat_file_id=task.nat_file_id,
+            file_url=task.file_url,
+            file_size=task.file_size,
+            file_type=task.file_type,
         )

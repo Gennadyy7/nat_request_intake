@@ -96,7 +96,6 @@ class BatchQueryService:
             tasks_count=record.tasks_count,
             sender_email=record.sender_email,
             created_at=batch.created_at,
-            updated_at=batch.updated_at,
         )
 
     def _to_detail(self, record: NatBatchDetailRecord) -> NatBatchDetail:
@@ -110,5 +109,4 @@ class BatchQueryService:
             tasks_count=record.tasks_count,
             sender_email=record.sender_email,
             created_at=batch.created_at,
-            updated_at=batch.updated_at,
         )

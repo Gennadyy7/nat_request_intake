@@ -97,7 +97,6 @@ class IntakeQueryService:
             message=get_message(error_code) if error_code is not None else None,
             batch_id=record.batch_id,
             created_at=intake.created_at,
-            updated_at=intake.updated_at,
         )
 
     def _to_detail(self, record: NatIntakeListRecord) -> NatIntakeDetail:

@@ -12,7 +12,6 @@ class NatBatchListItem(BaseModel):
     tasks_count: int = Field(ge=0)
     sender_email: EmailStr
     created_at: datetime
-    updated_at: datetime
 
 
 class NatBatchDetail(BaseModel):
@@ -24,4 +23,3 @@ class NatBatchDetail(BaseModel):
     tasks_count: int = Field(ge=0)
     sender_email: EmailStr
     created_at: datetime
-    updated_at: datetime

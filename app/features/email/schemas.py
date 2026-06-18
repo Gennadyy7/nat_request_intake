@@ -67,7 +67,6 @@ class EmailMessageResponse(BaseModel):
     message: str | None = Field(default=None, validation_alias='error_message')
     reply_status: EmailReplyStatus | None
     created_at: datetime
-    updated_at: datetime
 
 
 class EmailMessageListItem(BaseModel):

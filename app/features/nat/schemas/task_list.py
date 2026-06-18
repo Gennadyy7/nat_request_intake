@@ -4,16 +4,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class NatTaskResultFileItem(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: UUID
-    nat_file_id: int
-    file_url: str
-    file_size: str | None = None
-    file_type: str | None = None
-
-
 class NatTaskListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -31,11 +21,13 @@ class NatTaskListItem(BaseModel):
     region: str
     status: int | None = None
     progress: str | None = None
-    count_of_lines: str | None = None
     error: str | None = Field(default=None, validation_alias='error_message')
     created_at: datetime
-    updated_at: datetime
 
 
 class NatTaskDetail(NatTaskListItem):
-    files: list[NatTaskResultFileItem] = Field(default_factory=list)
+    count_of_lines: str | None = None
+    nat_file_id: int | None = None
+    file_url: str | None = None
+    file_size: str | None = None
+    file_type: str | None = None
