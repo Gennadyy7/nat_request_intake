@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, func, insert, select, text, update
+from sqlalchemy import and_, delete, func, insert, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import Label
@@ -247,6 +247,55 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
             sender_email=sender_email,
             original_file_name=original_file_name,
             tasks_count=int(tasks_count_value),
+        )
+
+    async def claim_for_notification(self, limit: int | None) -> Sequence[NatBatch]:
+        pending_dispatch = and_(
+            NatTask.status.is_(None),
+            NatTask.error_message.is_(None),
+        )
+        in_flight = NatTask.status.in_(NON_TERMINAL_NAT_STATUSES)
+        has_completed = (
+            select(NatTask.id)
+            .where(
+                NatTask.batch_id == NatBatch.id,
+                NatTask.status == NatTaskStatus.COMPLETED,
+            )
+            .correlate(NatBatch)
+            .exists()
+        )
+        has_non_terminal = (
+            select(NatTask.id)
+            .where(
+                NatTask.batch_id == NatBatch.id,
+                or_(pending_dispatch, in_flight),
+            )
+            .correlate(NatBatch)
+            .exists()
+        )
+        statement = (
+            select(NatBatch)
+            .where(
+                NatBatch.notified_at.is_(None),
+                has_completed,
+                ~has_non_terminal,
+            )
+            .order_by(NatBatch.created_at.asc())
+            .with_for_update(skip_locked=True)
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
+        result = await self._session.execute(statement)
+        return list(result.scalars().all())
+
+    async def mark_notified(self, batch_id: UUID) -> None:
+        await self._session.execute(
+            update(NatBatch)
+            .where(NatBatch.id == batch_id)
+            .values(
+                notified_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            )
         )
 
 

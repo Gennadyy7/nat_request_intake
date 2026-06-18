@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: cb675b40cf81
+Revision ID: 9686f0d86c25
 Revises:
-Create Date: 2026-06-18 09:35:41.936089
+Create Date: 2026-06-18 11:30:04.958245
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'cb675b40cf81'
+revision: str = '9686f0d86c25'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -337,6 +337,12 @@ def upgrade() -> None:
             comment='Number of rows in file (excluding header)',
         ),
         sa.Column(
+            'notified_at',
+            sa.DateTime(timezone=True),
+            nullable=True,
+            comment='Timestamp when the external service was notified about batch readiness',
+        ),
+        sa.Column(
             'created_at',
             sa.DateTime(timezone=True),
             server_default=sa.text('now()'),
@@ -363,6 +369,16 @@ def upgrade() -> None:
     op.create_index(op.f('ix_nat_batches_id'), 'nat_batches', ['id'], unique=False)
     op.create_index(
         op.f('ix_nat_batches_intake_id'), 'nat_batches', ['intake_id'], unique=True
+    )
+    op.create_index(
+        op.f('ix_nat_batches_notified_at'), 'nat_batches', ['notified_at'], unique=False
+    )
+    op.create_index(
+        'ix_nat_batches_notify_queue',
+        'nat_batches',
+        ['created_at'],
+        unique=False,
+        postgresql_where=sa.text('notified_at IS NULL'),
     )
     op.create_table(
         'nat_intake_row_errors',
@@ -604,6 +620,12 @@ def downgrade() -> None:
         op.f('ix_nat_intake_row_errors_intake_id'), table_name='nat_intake_row_errors'
     )
     op.drop_table('nat_intake_row_errors')
+    op.drop_index(
+        'ix_nat_batches_notify_queue',
+        table_name='nat_batches',
+        postgresql_where=sa.text('notified_at IS NULL'),
+    )
+    op.drop_index(op.f('ix_nat_batches_notified_at'), table_name='nat_batches')
     op.drop_index(op.f('ix_nat_batches_intake_id'), table_name='nat_batches')
     op.drop_index(op.f('ix_nat_batches_id'), table_name='nat_batches')
     op.drop_index(op.f('ix_nat_batches_file_name'), table_name='nat_batches')

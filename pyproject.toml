@@ -39,6 +39,9 @@ poller = [
 worker = [
     "httpx (>=0.28.1,<0.29.0)",
 ]
+notify = [
+    "httpx (>=0.28.1,<0.29.0)",
+]
 dev = [
     "loguru-mypy (>=0.0.4,<0.0.5)",
     "ruff (>=0.15.12,<0.16.0)",
@@ -85,7 +88,7 @@ disallow_incomplete_defs = true
 disallow_untyped_decorators = true
 disallow_any_generics = true
 mypy_path = ["."]
-files = ["app", "email_poller", "nat_task_status_worker"]
+files = ["app", "email_poller", "nat_task_status_worker", "nat_batch_notify_worker"]
 
 disallow_any_explicit = true
 

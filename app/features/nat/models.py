@@ -170,6 +170,13 @@ class NatBatch(Base, TimestampMixin):
         comment='Number of rows in file (excluding header)',
     )
 
+    notified_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+        comment='Timestamp when the external service was notified about batch readiness',
+    )
+
     intake: Mapped[NatIntake] = relationship(
         'NatIntake',
         back_populates='batch',
@@ -183,6 +190,11 @@ class NatBatch(Base, TimestampMixin):
     )
 
     __table_args__ = (
+        Index(
+            'ix_nat_batches_notify_queue',
+            'created_at',
+            postgresql_where=text('notified_at IS NULL'),
+        ),
         {
             'comment': 'NAT batch files containing multiple processing requests',
         },
@@ -194,7 +206,8 @@ class NatBatch(Base, TimestampMixin):
             f'id={self.id}, '
             f'intake_id={self.intake_id}, '
             f'file_name={self.file_name}, '
-            f'row_count={self.row_count})'
+            f'row_count={self.row_count}, '
+            f'notified_at={self.notified_at})'
         )
 
 
