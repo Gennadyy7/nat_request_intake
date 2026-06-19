@@ -15,6 +15,9 @@ from app.features.nat.services.persistence.batch_persistence import (
     BatchPersistenceService,
 )
 from app.features.nat.services.persistence.file_storage import FileStorageService
+from app.features.nat.services.processing.intake_processing_service import (
+    IntakeProcessingService,
+)
 from app.features.nat.services.transformation.transformation_service import (
     TransformationService,
 )
@@ -88,3 +91,9 @@ def get_task_query_service(
     uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
 ) -> TaskQueryService:
     return TaskQueryService(uow=uow)
+
+
+def get_intake_processing_service(
+    uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
+) -> IntakeProcessingService:
+    return IntakeProcessingService(uow=uow)

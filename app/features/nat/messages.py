@@ -75,6 +75,10 @@ MESSAGES: dict[str, str] = {
     ApiErrorCode.INVALID_SORT_ORDER: (
         'Недопустимый порядок сортировки. Допустимые значения: asc, desc'
     ),
+    ApiErrorCode.INTAKE_NOT_PAUSABLE: (
+        'Заявку нельзя приостановить: отсутствует принятый пакет обработки'
+    ),
+    ApiErrorCode.BATCH_ALREADY_NOTIFIED: ('Обработка уже передана внешнему сервису'),
 }
 
 

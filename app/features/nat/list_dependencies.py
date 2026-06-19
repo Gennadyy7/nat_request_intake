@@ -77,6 +77,7 @@ def get_nat_intake_filters(
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
     filter_created_at_to: Annotated[datetime | None, Query()] = None,
     filter_status: Annotated[str | None, Query()] = None,
+    filter_processing_paused: Annotated[bool | None, Query()] = None,
 ) -> NatIntakeFilters:
     status_value: IntakeStatus | None = None
     if filter_status is not None:
@@ -99,6 +100,7 @@ def get_nat_intake_filters(
         created_at_from=filter_created_at_from,
         created_at_to=filter_created_at_to,
         status=status_value,
+        processing_paused=filter_processing_paused,
     )
 
 

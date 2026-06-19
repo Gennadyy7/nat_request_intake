@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
@@ -175,6 +175,17 @@ class NatBatch(Base, TimestampMixin):
         nullable=True,
         index=True,
         comment='Timestamp when the external service was notified about batch readiness',
+    )
+
+    processing_paused: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text('false'),
+        comment=(
+            'When true, dispatch and notify workers skip this batch; '
+            'poll continues for already sent tasks'
+        ),
     )
 
     intake: Mapped[NatIntake] = relationship(

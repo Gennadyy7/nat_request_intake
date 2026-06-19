@@ -15,6 +15,7 @@ from app.features.auth.schemas import User
 from app.features.nat.constants import ApiErrorCode
 from app.features.nat.dependencies import (
     get_batch_query_service,
+    get_intake_processing_service,
     get_intake_query_service,
     get_intake_service,
     get_task_query_service,
@@ -45,6 +46,7 @@ from app.features.nat.schemas.intake_list import (
     NatIntakeListItem,
     NatIntakeRowErrorListResponse,
 )
+from app.features.nat.schemas.intake_processing import IntakeProcessingUpdate
 from app.features.nat.schemas.pagination import PaginatedResponse
 from app.features.nat.schemas.task_list import NatTaskDetail, NatTaskListItem
 from app.features.nat.services.intake.intake_service import IntakeService
@@ -52,6 +54,9 @@ from app.features.nat.services.intake.intake_upload import process_intake_upload
 from app.features.nat.services.listing.batch_query_service import BatchQueryService
 from app.features.nat.services.listing.intake_query_service import IntakeQueryService
 from app.features.nat.services.listing.task_query_service import TaskQueryService
+from app.features.nat.services.processing.intake_processing_service import (
+    IntakeProcessingService,
+)
 
 router = APIRouter(prefix='/nat', tags=['nat'])
 
@@ -142,6 +147,33 @@ async def get_intake(
             },
         )
     return detail
+
+
+@router.patch(
+    '/intakes/{intake_id}/processing',
+    response_model=NatIntakeDetail,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            'description': 'Intake not found',
+        },
+        status.HTTP_409_CONFLICT: {
+            'description': 'Intake cannot be paused or batch already notified',
+        },
+    },
+)
+async def update_intake_processing(
+    intake_id: UUID,
+    payload: IntakeProcessingUpdate,
+    _user: Annotated[User, Depends(get_user)],
+    processing_service: Annotated[
+        IntakeProcessingService,
+        Depends(get_intake_processing_service),
+    ],
+) -> NatIntakeDetail:
+    return await processing_service.set_processing_paused(
+        intake_id,
+        paused=payload.paused,
+    )
 
 
 @router.get(

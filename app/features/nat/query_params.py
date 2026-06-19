@@ -32,6 +32,7 @@ class NatIntakeFilters:
     created_at_from: datetime | None = None
     created_at_to: datetime | None = None
     status: IntakeStatus | None = None
+    processing_paused: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)

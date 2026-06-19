@@ -32,6 +32,7 @@ from app.features.nat.repository_query import (
     build_batch_filter_clauses,
     build_intake_filter_clauses,
     build_task_filter_clauses,
+    intake_list_requires_batch_join,
     intake_sort_column,
     order_by_sort_column,
     row_error_sort_expression,
@@ -67,6 +68,11 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
     async def count_filtered(self, filters: NatIntakeFilters) -> int:
         clauses = build_intake_filter_clauses(filters)
         statement = select(func.count()).select_from(NatIntake)
+        if intake_list_requires_batch_join(filters):
+            statement = statement.outerjoin(
+                NatBatch,
+                NatBatch.intake_id == NatIntake.id,
+            )
         if clauses:
             statement = statement.where(*clauses)
         result = await self._session.execute(statement)
@@ -81,7 +87,7 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
     ) -> Sequence[NatIntakeListRecord]:
         clauses = build_intake_filter_clauses(filters)
         statement = (
-            select(NatIntake, NatBatch.id)
+            select(NatIntake, NatBatch.id, NatBatch.processing_paused)
             .outerjoin(NatBatch, NatBatch.intake_id == NatIntake.id)
             .order_by(order_by_sort_column(intake_sort_column(sort), sort.sort_order))
             .limit(limit)
@@ -91,8 +97,12 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
             statement = statement.where(*clauses)
         result = await self._session.execute(statement)
         return [
-            NatIntakeListRecord(intake=intake, batch_id=batch_id)
-            for intake, batch_id in result.all()
+            NatIntakeListRecord(
+                intake=intake,
+                batch_id=batch_id,
+                processing_paused=processing_paused,
+            )
+            for intake, batch_id, processing_paused in result.all()
         ]
 
     async def get_list_record_by_id(
@@ -100,7 +110,7 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
         intake_id: UUID,
     ) -> NatIntakeListRecord | None:
         statement = (
-            select(NatIntake, NatBatch.id)
+            select(NatIntake, NatBatch.id, NatBatch.processing_paused)
             .outerjoin(NatBatch, NatBatch.intake_id == NatIntake.id)
             .where(NatIntake.id == intake_id)
         )
@@ -108,8 +118,12 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
         row = result.one_or_none()
         if row is None:
             return None
-        intake, batch_id = row
-        return NatIntakeListRecord(intake=intake, batch_id=batch_id)
+        intake, batch_id, processing_paused = row
+        return NatIntakeListRecord(
+            intake=intake,
+            batch_id=batch_id,
+            processing_paused=processing_paused,
+        )
 
 
 class NatIntakeRowErrorRepository(SQLAlchemyRepository[NatIntakeRowError, UUID]):
@@ -277,6 +291,7 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
             select(NatBatch)
             .where(
                 NatBatch.notified_at.is_(None),
+                NatBatch.processing_paused.is_(False),
                 has_completed,
                 ~has_non_terminal,
             )
@@ -294,6 +309,21 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
             .where(NatBatch.id == batch_id)
             .values(
                 notified_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            )
+        )
+
+    async def get_by_intake_id(self, intake_id: UUID) -> NatBatch | None:
+        statement = select(NatBatch).where(NatBatch.intake_id == intake_id)
+        result = await self._session.execute(statement)
+        return result.scalar_one_or_none()
+
+    async def set_processing_paused(self, batch_id: UUID, *, paused: bool) -> None:
+        await self._session.execute(
+            update(NatBatch)
+            .where(NatBatch.id == batch_id)
+            .values(
+                processing_paused=paused,
                 updated_at=datetime.now(UTC),
             )
         )
@@ -392,9 +422,11 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
     async def claim_for_dispatch(self, limit: int | None) -> Sequence[NatTask]:
         statement = (
             select(NatTask)
+            .join(NatBatch, NatTask.batch_id == NatBatch.id)
             .where(
                 NatTask.status.is_(None),
                 NatTask.error_message.is_(None),
+                NatBatch.processing_paused.is_(False),
             )
             .order_by(NatTask.created_at.asc())
             .with_for_update(skip_locked=True)

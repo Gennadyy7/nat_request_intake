@@ -1,4 +1,4 @@
-from sqlalchemy import ColumnElement, asc, desc
+from sqlalchemy import ColumnElement, asc, desc, or_
 from sqlalchemy.orm import InstrumentedAttribute
 
 from app.features.nat.models import NatBatch, NatIntake, NatIntakeRowError, NatTask
@@ -33,7 +33,21 @@ def build_intake_filter_clauses(
         clauses.append(NatIntake.status == filters.status.value)
     if filters.intake_id is not None:
         clauses.append(NatIntake.id == filters.intake_id)
+    if filters.processing_paused is True:
+        clauses.append(NatBatch.id.is_not(None))
+        clauses.append(NatBatch.processing_paused.is_(True))
+    elif filters.processing_paused is False:
+        clauses.append(
+            or_(
+                NatBatch.id.is_(None),
+                NatBatch.processing_paused.is_(False),
+            )
+        )
     return clauses
+
+
+def intake_list_requires_batch_join(filters: NatIntakeFilters) -> bool:
+    return filters.processing_paused is not None
 
 
 def build_batch_filter_clauses(

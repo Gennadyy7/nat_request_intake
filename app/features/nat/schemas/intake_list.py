@@ -20,6 +20,7 @@ class NatIntakeListItem(BaseModel):
     code: ValidationErrorCode | None = None
     message: str | None = None
     batch_id: UUID | None = None
+    processing_paused: bool | None = None
     created_at: datetime
 
 
@@ -31,6 +32,7 @@ class NatIntakeDetail(BaseModel):
     code: ValidationErrorCode | None = None
     message: str | None = None
     batch_id: UUID | None = None
+    processing_paused: bool | None = None
     created_at: datetime
 
 

@@ -24,3 +24,4 @@ class NatBatchDetailRecord:
 class NatIntakeListRecord:
     intake: NatIntake
     batch_id: UUID | None
+    processing_paused: bool | None

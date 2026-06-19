@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: 9686f0d86c25
+Revision ID: f8432f7d7be6
 Revises:
-Create Date: 2026-06-18 11:30:04.958245
+Create Date: 2026-06-19 10:48:16.902566
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '9686f0d86c25'
+revision: str = 'f8432f7d7be6'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -341,6 +341,13 @@ def upgrade() -> None:
             sa.DateTime(timezone=True),
             nullable=True,
             comment='Timestamp when the external service was notified about batch readiness',
+        ),
+        sa.Column(
+            'processing_paused',
+            sa.Boolean(),
+            server_default=sa.text('false'),
+            nullable=False,
+            comment='When true, dispatch and notify workers skip this batch; poll continues for already sent tasks',
         ),
         sa.Column(
             'created_at',
