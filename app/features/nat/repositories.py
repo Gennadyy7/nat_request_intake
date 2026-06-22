@@ -2,14 +2,15 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from sqlalchemy import and_, delete, func, insert, or_, select, text, update
+from sqlalchemy import and_, case, delete, func, insert, or_, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.elements import Label
+from sqlalchemy.sql.elements import ColumnElement, Label
 
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.repositories.sqlalchemy import SQLAlchemyRepository
+from app.features.email.models import EmailMessage
 from app.features.nat.constants import NON_TERMINAL_NAT_STATUSES, NatTaskStatus
 from app.features.nat.domain.deduplication_key import DeduplicationKey
 from app.features.nat.domain.transformed_row import TransformedRow
@@ -42,6 +43,7 @@ from app.features.nat.repository_records import (
     NatBatchDetailRecord,
     NatBatchListRecord,
     NatIntakeListRecord,
+    NatIntakeMonitoringListRecord,
 )
 from app.features.nat.services.deduplication.deduplication_key import build_key_hash
 
@@ -59,6 +61,36 @@ def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
         return value.replace(tzinfo=UTC)
     return value.astimezone(UTC)
+
+
+def _rejected_row_count_subquery() -> Label[int]:
+    return (
+        select(func.count(func.distinct(NatIntakeRowError.row_number)))
+        .where(NatIntakeRowError.intake_id == NatIntake.id)
+        .correlate(NatIntake)
+        .scalar_subquery()
+        .label('rejected_row_count')
+    )
+
+
+def _nullable_batch_task_count_subquery(
+    *,
+    extra_condition: ColumnElement[bool] | None,
+    label: str,
+) -> Label[int | None]:
+    where_clauses: list[ColumnElement[bool]] = [NatTask.batch_id == NatBatch.id]
+    if extra_condition is not None:
+        where_clauses.append(extra_condition)
+    count_subquery = (
+        select(func.count(NatTask.id))
+        .where(*where_clauses)
+        .correlate(NatBatch)
+        .scalar_subquery()
+    )
+    return case(
+        (NatBatch.id.is_not(None), count_subquery),
+        else_=None,
+    ).label(label)
 
 
 class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
@@ -105,6 +137,83 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
             for intake, batch_id, processing_paused in result.all()
         ]
 
+    async def list_monitoring_filtered(
+        self,
+        filters: NatIntakeFilters,
+        sort: SortParams,
+        limit: int,
+        offset: int,
+    ) -> Sequence[NatIntakeMonitoringListRecord]:
+        clauses = build_intake_filter_clauses(filters)
+        rejected_row_count = _rejected_row_count_subquery()
+        tasks_total = _nullable_batch_task_count_subquery(
+            extra_condition=None,
+            label='tasks_total',
+        )
+        tasks_pending_dispatch = _nullable_batch_task_count_subquery(
+            extra_condition=and_(
+                NatTask.status.is_(None),
+                NatTask.error_message.is_(None),
+            ),
+            label='tasks_pending_dispatch',
+        )
+        tasks_in_progress = _nullable_batch_task_count_subquery(
+            extra_condition=NatTask.status.in_(NON_TERMINAL_NAT_STATUSES),
+            label='tasks_in_progress',
+        )
+        tasks_completed = _nullable_batch_task_count_subquery(
+            extra_condition=NatTask.status == NatTaskStatus.COMPLETED,
+            label='tasks_completed',
+        )
+        statement = (
+            select(
+                NatIntake,
+                NatBatch.id,
+                NatBatch.processing_paused,
+                NatBatch.row_count,
+                rejected_row_count,
+                EmailMessage.reply_status,
+                tasks_total,
+                tasks_pending_dispatch,
+                tasks_in_progress,
+                tasks_completed,
+            )
+            .outerjoin(NatBatch, NatBatch.intake_id == NatIntake.id)
+            .outerjoin(EmailMessage, EmailMessage.nat_intake_id == NatIntake.id)
+            .order_by(order_by_sort_column(intake_sort_column(sort), sort.sort_order))
+            .limit(limit)
+            .offset(offset)
+        )
+        if clauses:
+            statement = statement.where(*clauses)
+        result = await self._session.execute(statement)
+        return [
+            NatIntakeMonitoringListRecord(
+                intake=intake,
+                batch_id=batch_id,
+                processing_paused=processing_paused,
+                batch_row_count=batch_row_count,
+                rejected_row_count=int(rejected_row_count_value),
+                email_reply_status=email_reply_status,
+                tasks_total=_optional_int(tasks_total_value),
+                tasks_pending_dispatch=_optional_int(tasks_pending_dispatch_value),
+                tasks_in_progress=_optional_int(tasks_in_progress_value),
+                tasks_completed=_optional_int(tasks_completed_value),
+            )
+            for (
+                intake,
+                batch_id,
+                processing_paused,
+                batch_row_count,
+                rejected_row_count_value,
+                email_reply_status,
+                tasks_total_value,
+                tasks_pending_dispatch_value,
+                tasks_in_progress_value,
+                tasks_completed_value,
+            ) in result.all()
+        ]
+
     async def get_list_record_by_id(
         self,
         intake_id: UUID,
@@ -124,6 +233,12 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
             batch_id=batch_id,
             processing_paused=processing_paused,
         )
+
+
+def _optional_int(value: int | None) -> int | None:
+    if value is None:
+        return None
+    return int(value)
 
 
 class NatIntakeRowErrorRepository(SQLAlchemyRepository[NatIntakeRowError, UUID]):

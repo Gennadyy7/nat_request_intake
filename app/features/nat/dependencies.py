@@ -9,6 +9,9 @@ from app.features.nat.services.deduplication.deduplication_service import (
 )
 from app.features.nat.services.intake.intake_service import IntakeService
 from app.features.nat.services.listing.batch_query_service import BatchQueryService
+from app.features.nat.services.listing.intake_monitoring_query_service import (
+    IntakeMonitoringQueryService,
+)
 from app.features.nat.services.listing.intake_query_service import IntakeQueryService
 from app.features.nat.services.listing.task_query_service import TaskQueryService
 from app.features.nat.services.persistence.batch_persistence import (
@@ -75,6 +78,12 @@ def get_intake_query_service(
     uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
 ) -> IntakeQueryService:
     return IntakeQueryService(uow=uow)
+
+
+def get_intake_monitoring_query_service(
+    uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
+) -> IntakeMonitoringQueryService:
+    return IntakeMonitoringQueryService(uow=uow)
 
 
 def get_batch_query_service(

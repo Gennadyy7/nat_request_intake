@@ -115,6 +115,12 @@ class IntakeStatus(StrEnum):
     ACCEPTED = 'accepted'
 
 
+def is_file_level_intake_rejection(error_code: str | None) -> bool:
+    if error_code is None:
+        return False
+    return error_code != ValidationErrorCode.NO_VALID_ROWS.value
+
+
 REQUIRED_COLUMNS: Final[frozenset[InputColumnName]] = frozenset(InputColumnName)
 
 MANDATORY_VALUE_COLUMNS: Final[frozenset[InputColumnName]] = frozenset(

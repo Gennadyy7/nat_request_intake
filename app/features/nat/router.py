@@ -15,6 +15,7 @@ from app.features.auth.schemas import User
 from app.features.nat.constants import ApiErrorCode
 from app.features.nat.dependencies import (
     get_batch_query_service,
+    get_intake_monitoring_query_service,
     get_intake_processing_service,
     get_intake_query_service,
     get_intake_service,
@@ -46,12 +47,16 @@ from app.features.nat.schemas.intake_list import (
     NatIntakeListItem,
     NatIntakeRowErrorListResponse,
 )
+from app.features.nat.schemas.intake_monitoring import NatIntakeMonitoringListItem
 from app.features.nat.schemas.intake_processing import IntakeProcessingUpdate
 from app.features.nat.schemas.pagination import PaginatedResponse
 from app.features.nat.schemas.task_list import NatTaskDetail, NatTaskListItem
 from app.features.nat.services.intake.intake_service import IntakeService
 from app.features.nat.services.intake.intake_upload import process_intake_upload
 from app.features.nat.services.listing.batch_query_service import BatchQueryService
+from app.features.nat.services.listing.intake_monitoring_query_service import (
+    IntakeMonitoringQueryService,
+)
 from app.features.nat.services.listing.intake_query_service import IntakeQueryService
 from app.features.nat.services.listing.task_query_service import TaskQueryService
 from app.features.nat.services.processing.intake_processing_service import (
@@ -124,6 +129,27 @@ async def list_intakes(
     pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
 ) -> PaginatedResponse[NatIntakeListItem]:
     return await query_service.list_intakes(
+        filters=filters,
+        sort=sort,
+        pagination=pagination,
+    )
+
+
+@router.get(
+    '/intakes/monitoring',
+    response_model=PaginatedResponse[NatIntakeMonitoringListItem],
+)
+async def list_intakes_monitoring(
+    _user: Annotated[User, Depends(get_user)],
+    query_service: Annotated[
+        IntakeMonitoringQueryService,
+        Depends(get_intake_monitoring_query_service),
+    ],
+    filters: Annotated[NatIntakeFilters, Depends(get_nat_intake_filters)],
+    sort: Annotated[SortParams, Depends(get_nat_intake_sort_params)],
+    pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
+) -> PaginatedResponse[NatIntakeMonitoringListItem]:
+    return await query_service.list_monitoring(
         filters=filters,
         sort=sort,
         pagination=pagination,
