@@ -19,12 +19,14 @@ from app.features.nat.dependencies import (
     get_intake_processing_service,
     get_intake_query_service,
     get_intake_service,
+    get_result_processing_query_service,
     get_task_query_service,
 )
 from app.features.nat.list_dependencies import (
     get_nat_batch_filters,
     get_nat_batch_sort_params,
     get_nat_intake_filters,
+    get_nat_intake_monitoring_filters,
     get_nat_intake_row_errors_sort_order,
     get_nat_intake_sort_params,
     get_nat_task_filters,
@@ -36,6 +38,7 @@ from app.features.nat.pagination import PaginationParams
 from app.features.nat.query_params import (
     NatBatchFilters,
     NatIntakeFilters,
+    NatIntakeMonitoringFilters,
     NatTaskFilters,
     SortOrder,
     SortParams,
@@ -50,6 +53,7 @@ from app.features.nat.schemas.intake_list import (
 from app.features.nat.schemas.intake_monitoring import NatIntakeMonitoringListItem
 from app.features.nat.schemas.intake_processing import IntakeProcessingUpdate
 from app.features.nat.schemas.pagination import PaginatedResponse
+from app.features.nat.schemas.result_processing import NatResultProcessingDetail
 from app.features.nat.schemas.task_list import NatTaskDetail, NatTaskListItem
 from app.features.nat.services.intake.intake_service import IntakeService
 from app.features.nat.services.intake.intake_upload import process_intake_upload
@@ -58,6 +62,9 @@ from app.features.nat.services.listing.intake_monitoring_query_service import (
     IntakeMonitoringQueryService,
 )
 from app.features.nat.services.listing.intake_query_service import IntakeQueryService
+from app.features.nat.services.listing.result_processing_query_service import (
+    ResultProcessingQueryService,
+)
 from app.features.nat.services.listing.task_query_service import TaskQueryService
 from app.features.nat.services.processing.intake_processing_service import (
     IntakeProcessingService,
@@ -145,7 +152,10 @@ async def list_intakes_monitoring(
         IntakeMonitoringQueryService,
         Depends(get_intake_monitoring_query_service),
     ],
-    filters: Annotated[NatIntakeFilters, Depends(get_nat_intake_filters)],
+    filters: Annotated[
+        NatIntakeMonitoringFilters,
+        Depends(get_nat_intake_monitoring_filters),
+    ],
     sort: Annotated[SortParams, Depends(get_nat_intake_sort_params)],
     pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
 ) -> PaginatedResponse[NatIntakeMonitoringListItem]:
@@ -265,6 +275,46 @@ async def get_batch(
             },
         )
     return detail
+
+
+@router.get(
+    '/batches/{batch_id}/result-processing',
+    response_model=NatResultProcessingDetail,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            'description': 'Batch or result processing task not found',
+        },
+    },
+)
+async def get_batch_result_processing(
+    batch_id: UUID,
+    _user: Annotated[User, Depends(get_user)],
+    query_service: Annotated[
+        ResultProcessingQueryService,
+        Depends(get_result_processing_query_service),
+    ],
+) -> NatResultProcessingDetail:
+    result = await query_service.get_by_batch_id(batch_id)
+    if result.status == 'batch_not_found':
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                'code': ApiErrorCode.BATCH_NOT_FOUND,
+                'message': get_message(ApiErrorCode.BATCH_NOT_FOUND),
+                'batch_id': str(batch_id),
+            },
+        )
+    if result.status == 'not_found':
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                'code': ApiErrorCode.RESULT_PROCESSING_NOT_FOUND,
+                'message': get_message(ApiErrorCode.RESULT_PROCESSING_NOT_FOUND),
+                'batch_id': str(batch_id),
+            },
+        )
+    assert result.detail is not None
+    return result.detail
 
 
 @router.get(

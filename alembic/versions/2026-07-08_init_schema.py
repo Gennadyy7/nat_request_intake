@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: f8432f7d7be6
+Revision ID: cd0964f127d6
 Revises:
-Create Date: 2026-06-19 10:48:16.902566
+Create Date: 2026-07-08 10:19:48.204087
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'f8432f7d7be6'
+revision: str = 'cd0964f127d6'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -435,6 +435,93 @@ def upgrade() -> None:
         unique=False,
     )
     op.create_table(
+        'aggregation_tasks',
+        sa.Column(
+            'id',
+            sa.Integer(),
+            autoincrement=True,
+            nullable=False,
+            comment='Primary key (auto-increment)',
+        ),
+        sa.Column(
+            'nat_batch_id',
+            sa.Uuid(),
+            nullable=False,
+            comment='Foreign key to parent NatBatch',
+        ),
+        sa.Column(
+            'status',
+            sa.String(length=32),
+            server_default='pending',
+            nullable=False,
+            comment='Result processing status (pending, downloading, aggregating, matching_spin, completed, failed)',
+        ),
+        sa.Column(
+            'created_at',
+            sa.DateTime(timezone=True),
+            server_default=sa.text('now()'),
+            nullable=False,
+            comment='Timestamp when result processing was started',
+        ),
+        sa.Column(
+            'completed_at',
+            sa.DateTime(timezone=True),
+            nullable=True,
+            comment='Timestamp when result processing finished',
+        ),
+        sa.Column(
+            'aggregated_file_path',
+            sa.String(length=2048),
+            nullable=True,
+            comment='Path to the aggregated NAT results file',
+        ),
+        sa.Column(
+            'spin_matched_file_path',
+            sa.String(length=2048),
+            nullable=True,
+            comment='Path to the final file after SPIN3 matching',
+        ),
+        sa.Column(
+            'total_lines',
+            sa.Integer(),
+            server_default=sa.text('0'),
+            nullable=False,
+            comment='Number of lines processed during aggregation',
+        ),
+        sa.Column(
+            'error_message',
+            sa.Text(),
+            nullable=True,
+            comment='Error description when result processing failed',
+        ),
+        sa.Column(
+            'matched_count',
+            sa.Integer(),
+            nullable=True,
+            comment='Number of records matched with SPIN3',
+        ),
+        sa.Column(
+            'total_to_match',
+            sa.Integer(),
+            nullable=True,
+            comment='Total number of records to match with SPIN3',
+        ),
+        sa.ForeignKeyConstraint(
+            ['nat_batch_id'],
+            ['nat_batches.id'],
+            name='fk_aggregation_tasks_nat_batch_id_nat_batches',
+            ondelete='CASCADE',
+        ),
+        sa.PrimaryKeyConstraint('id', name=op.f('pk_aggregation_tasks')),
+        comment='External post-processing task for aggregating NAT results and SPIN3 matching',
+    )
+    op.create_index(
+        op.f('ix_aggregation_tasks_nat_batch_id'),
+        'aggregation_tasks',
+        ['nat_batch_id'],
+        unique=True,
+    )
+    op.create_table(
         'nat_tasks',
         sa.Column(
             'id',
@@ -623,6 +710,10 @@ def downgrade() -> None:
     )
     op.drop_index(op.f('ix_nat_tasks_batch_id'), table_name='nat_tasks')
     op.drop_table('nat_tasks')
+    op.drop_index(
+        op.f('ix_aggregation_tasks_nat_batch_id'), table_name='aggregation_tasks'
+    )
+    op.drop_table('aggregation_tasks')
     op.drop_index(
         op.f('ix_nat_intake_row_errors_intake_id'), table_name='nat_intake_row_errors'
     )

@@ -1,6 +1,7 @@
 from app.features.email.constants import EmailReplyStatus
 from app.features.nat.constants import (
     IntakeStatus,
+    NatResultProcessingStatus,
     ValidationErrorCode,
     is_file_level_intake_rejection,
 )
@@ -11,6 +12,7 @@ from app.features.nat.repository_records import (
 from app.features.nat.schemas.intake_monitoring import (
     IntakeFileRowStats,
     IntakeNatTaskStats,
+    IntakeResultProcessingStats,
     NatIntakeMonitoringListItem,
 )
 from app.features.nat.services.listing.intake_mapping import to_intake_list_item
@@ -27,6 +29,7 @@ def to_monitoring_list_item(
         rows=_build_row_stats(record),
         tasks=_build_task_stats(record),
         email_reply_status=_parse_reply_status(record.email_reply_status),
+        result_processing=_build_result_processing_stats(record),
     )
 
 
@@ -88,6 +91,22 @@ def _build_task_stats(
         in_progress=in_progress,
         completed=completed,
         failed=failed,
+    )
+
+
+def _build_result_processing_stats(
+    record: NatIntakeMonitoringListRecord,
+) -> IntakeResultProcessingStats | None:
+    if record.result_processing_status is None:
+        return None
+
+    return IntakeResultProcessingStats(
+        status=NatResultProcessingStatus(record.result_processing_status),
+        matched_count=record.result_processing_matched_count,
+        total_to_match=record.result_processing_total_to_match,
+        total_lines=record.result_processing_total_lines or 0,
+        error_message=record.result_processing_error_message,
+        completed_at=record.result_processing_completed_at,
     )
 
 

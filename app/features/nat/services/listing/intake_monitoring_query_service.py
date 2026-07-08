@@ -1,6 +1,6 @@
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from app.features.nat.pagination import PaginationParams, build_paginated_response
-from app.features.nat.query_params import NatIntakeFilters, SortParams
+from app.features.nat.query_params import NatIntakeMonitoringFilters, SortParams
 from app.features.nat.schemas.intake_monitoring import NatIntakeMonitoringListItem
 from app.features.nat.schemas.pagination import PaginatedResponse
 from app.features.nat.services.listing.intake_monitoring_mapping import (
@@ -15,11 +15,11 @@ class IntakeMonitoringQueryService:
     async def list_monitoring(
         self,
         *,
-        filters: NatIntakeFilters,
+        filters: NatIntakeMonitoringFilters,
         sort: SortParams,
         pagination: PaginationParams,
     ) -> PaginatedResponse[NatIntakeMonitoringListItem]:
-        total_items = await self._uow.nat_intakes.count_filtered(filters)
+        total_items = await self._uow.nat_intakes.count_monitoring_filtered(filters)
         records = await self._uow.nat_intakes.list_monitoring_filtered(
             filters,
             sort,

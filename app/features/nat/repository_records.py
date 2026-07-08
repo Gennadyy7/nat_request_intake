@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from app.features.nat.models import NatBatch, NatIntake
@@ -39,3 +40,9 @@ class NatIntakeMonitoringListRecord:
     tasks_pending_dispatch: int | None
     tasks_in_progress: int | None
     tasks_completed: int | None
+    result_processing_status: str | None
+    result_processing_matched_count: int | None
+    result_processing_total_to_match: int | None
+    result_processing_total_lines: int | None
+    result_processing_error_message: str | None
+    result_processing_completed_at: datetime | None

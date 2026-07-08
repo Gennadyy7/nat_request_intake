@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Final, Literal
 from uuid import UUID
 
-from app.features.nat.constants import IntakeStatus
+from app.features.nat.constants import IntakeStatus, NatResultProcessingStatus
 
 SortOrder = Literal['asc', 'desc']
 
@@ -33,6 +33,12 @@ class NatIntakeFilters:
     created_at_to: datetime | None = None
     status: IntakeStatus | None = None
     processing_paused: bool | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class NatIntakeMonitoringFilters(NatIntakeFilters):
+    result_processing_status: NatResultProcessingStatus | None = None
+    result_processing_status_is_null: bool = False
 
 
 @dataclass(frozen=True, slots=True)

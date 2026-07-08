@@ -13,6 +13,9 @@ from app.features.nat.services.listing.intake_monitoring_query_service import (
     IntakeMonitoringQueryService,
 )
 from app.features.nat.services.listing.intake_query_service import IntakeQueryService
+from app.features.nat.services.listing.result_processing_query_service import (
+    ResultProcessingQueryService,
+)
 from app.features.nat.services.listing.task_query_service import TaskQueryService
 from app.features.nat.services.persistence.batch_persistence import (
     BatchPersistenceService,
@@ -100,6 +103,12 @@ def get_task_query_service(
     uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
 ) -> TaskQueryService:
     return TaskQueryService(uow=uow)
+
+
+def get_result_processing_query_service(
+    uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
+) -> ResultProcessingQueryService:
+    return ResultProcessingQueryService(uow=uow)
 
 
 def get_intake_processing_service(

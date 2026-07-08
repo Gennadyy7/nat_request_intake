@@ -14,6 +14,7 @@ from app.features.nat.repositories import (
     NatDedupKeyRepository,
     NatIntakeRepository,
     NatIntakeRowErrorRepository,
+    NatResultProcessingTaskRepository,
     NatTaskRepository,
 )
 
@@ -28,6 +29,9 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_intake_row_errors: NatIntakeRowErrorRepository | None = None
         self._nat_batches: NatBatchRepository | None = None
         self._nat_tasks: NatTaskRepository | None = None
+        self._nat_result_processing_tasks: NatResultProcessingTaskRepository | None = (
+            None
+        )
         self._nat_dedup_keys: NatDedupKeyRepository | None = None
         self._email_senders: EmailSenderRepository | None = None
         self._email_messages: EmailMessageRepository | None = None
@@ -79,6 +83,18 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         return self._nat_tasks
 
     @property
+    def nat_result_processing_tasks(self) -> NatResultProcessingTaskRepository:
+        if self._nat_result_processing_tasks is None:
+            logger.error(
+                'Attempted to access nat_result_processing_tasks repository '
+                'outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._nat_result_processing_tasks
+
+    @property
     def nat_dedup_keys(self) -> NatDedupKeyRepository:
         if self._nat_dedup_keys is None:
             logger.error(
@@ -122,6 +138,9 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_intake_row_errors = NatIntakeRowErrorRepository(self._session)
         self._nat_batches = NatBatchRepository(self._session)
         self._nat_tasks = NatTaskRepository(self._session)
+        self._nat_result_processing_tasks = NatResultProcessingTaskRepository(
+            self._session,
+        )
         self._nat_dedup_keys = NatDedupKeyRepository(self._session)
         self._email_senders = EmailSenderRepository(self._session)
         self._email_messages = EmailMessageRepository(self._session)

@@ -3,7 +3,17 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
@@ -200,6 +210,12 @@ class NatBatch(Base, TimestampMixin):
         order_by='NatTask.created_at',
     )
 
+    result_processing_task: Mapped[NatResultProcessingTask | None] = relationship(
+        'NatResultProcessingTask',
+        back_populates='batch',
+        uselist=False,
+    )
+
     __table_args__ = (
         Index(
             'ix_nat_batches_notify_queue',
@@ -381,6 +397,111 @@ class NatTask(Base, TimestampMixin):
             f'nat_request_id={self.nat_request_id}, '
             f'status={self.status}, '
             f'batch_id={self.batch_id})'
+        )
+
+
+class NatResultProcessingTask(Base):
+    __tablename__ = 'aggregation_tasks'
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        autoincrement=True,
+        comment='Primary key (auto-increment)',
+    )
+
+    nat_batch_id: Mapped[UUID] = mapped_column(
+        ForeignKey(
+            'nat_batches.id',
+            name='fk_aggregation_tasks_nat_batch_id_nat_batches',
+            ondelete='CASCADE',
+        ),
+        nullable=False,
+        unique=True,
+        index=True,
+        comment='Foreign key to parent NatBatch',
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        server_default='pending',
+        comment=(
+            'Result processing status '
+            '(pending, downloading, aggregating, matching_spin, completed, failed)'
+        ),
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        comment='Timestamp when result processing was started',
+    )
+
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment='Timestamp when result processing finished',
+    )
+
+    aggregated_file_path: Mapped[str | None] = mapped_column(
+        String(2048),
+        nullable=True,
+        comment='Path to the aggregated NAT results file',
+    )
+
+    spin_matched_file_path: Mapped[str | None] = mapped_column(
+        String(2048),
+        nullable=True,
+        comment='Path to the final file after SPIN3 matching',
+    )
+
+    total_lines: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default=text('0'),
+        comment='Number of lines processed during aggregation',
+    )
+
+    error_message: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment='Error description when result processing failed',
+    )
+
+    matched_count: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment='Number of records matched with SPIN3',
+    )
+
+    total_to_match: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+        comment='Total number of records to match with SPIN3',
+    )
+
+    batch: Mapped[NatBatch] = relationship(
+        'NatBatch',
+        back_populates='result_processing_task',
+    )
+
+    __table_args__ = (
+        {
+            'comment': (
+                'External post-processing task for aggregating NAT results and SPIN3 matching'
+            ),
+        },
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f'NatResultProcessingTask('
+            f'id={self.id}, '
+            f'nat_batch_id={self.nat_batch_id}, '
+            f'status={self.status})'
         )
 
 

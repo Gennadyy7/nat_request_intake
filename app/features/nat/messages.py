@@ -63,6 +63,7 @@ MESSAGES: dict[str, str] = {
     ApiErrorCode.BATCH_NOT_FOUND: 'Пакет не найден',
     ApiErrorCode.BATCH_FILE_NOT_FOUND: 'Исходный файл пакета не найден',
     ApiErrorCode.TASK_NOT_FOUND: 'Задача не найдена',
+    ApiErrorCode.RESULT_PROCESSING_NOT_FOUND: 'Обработка результатов не найдена',
     ApiErrorCode.INVALID_FILTER_STATUS: 'Недопустимое значение фильтра статуса',
     ApiErrorCode.INVALID_FILTER_TASK_STATUS: (
         'Недопустимое значение фильтра статуса задачи. Допустимо: целое число или null'
@@ -70,6 +71,9 @@ MESSAGES: dict[str, str] = {
     ApiErrorCode.INVALID_FILTER_NAT_REQUEST_ID: (
         'Недопустимое значение фильтра идентификатора запроса NAT. '
         'Допустимо: целое число или null'
+    ),
+    ApiErrorCode.INVALID_FILTER_RESULT_PROCESSING_STATUS: (
+        'Недопустимое значение фильтра статуса обработки результатов'
     ),
     ApiErrorCode.INVALID_SORT_BY: 'Недопустимое поле сортировки',
     ApiErrorCode.INVALID_SORT_ORDER: (

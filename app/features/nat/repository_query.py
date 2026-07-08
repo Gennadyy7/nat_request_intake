@@ -1,10 +1,17 @@
 from sqlalchemy import ColumnElement, asc, desc, or_
 from sqlalchemy.orm import InstrumentedAttribute
 
-from app.features.nat.models import NatBatch, NatIntake, NatIntakeRowError, NatTask
+from app.features.nat.models import (
+    NatBatch,
+    NatIntake,
+    NatIntakeRowError,
+    NatResultProcessingTask,
+    NatTask,
+)
 from app.features.nat.query_params import (
     NatBatchFilters,
     NatIntakeFilters,
+    NatIntakeMonitoringFilters,
     NatTaskFilters,
     SortOrder,
     SortParams,
@@ -48,6 +55,28 @@ def build_intake_filter_clauses(
 
 def intake_list_requires_batch_join(filters: NatIntakeFilters) -> bool:
     return filters.processing_paused is not None
+
+
+def monitoring_requires_result_processing_join(
+    filters: NatIntakeMonitoringFilters,
+) -> bool:
+    return (
+        filters.result_processing_status_is_null
+        or filters.result_processing_status is not None
+    )
+
+
+def build_result_processing_filter_clauses(
+    filters: NatIntakeMonitoringFilters,
+) -> list[ColumnElement[bool]]:
+    clauses: list[ColumnElement[bool]] = []
+    if filters.result_processing_status_is_null:
+        clauses.append(NatResultProcessingTask.id.is_(None))
+    elif filters.result_processing_status is not None:
+        clauses.append(
+            NatResultProcessingTask.status == filters.result_processing_status.value
+        )
+    return clauses
 
 
 def build_batch_filter_clauses(

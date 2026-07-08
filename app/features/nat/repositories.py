@@ -19,11 +19,13 @@ from app.features.nat.models import (
     NatDedupKey,
     NatIntake,
     NatIntakeRowError,
+    NatResultProcessingTask,
     NatTask,
 )
 from app.features.nat.query_params import (
     NatBatchFilters,
     NatIntakeFilters,
+    NatIntakeMonitoringFilters,
     NatTaskFilters,
     SortOrder,
     SortParams,
@@ -32,9 +34,11 @@ from app.features.nat.repository_query import (
     batch_sort_column,
     build_batch_filter_clauses,
     build_intake_filter_clauses,
+    build_result_processing_filter_clauses,
     build_task_filter_clauses,
     intake_list_requires_batch_join,
     intake_sort_column,
+    monitoring_requires_result_processing_join,
     order_by_sort_column,
     row_error_sort_expression,
     task_sort_column,
@@ -137,14 +141,38 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
             for intake, batch_id, processing_paused in result.all()
         ]
 
+    async def count_monitoring_filtered(
+        self,
+        filters: NatIntakeMonitoringFilters,
+    ) -> int:
+        clauses = build_intake_filter_clauses(filters)
+        result_processing_clauses = build_result_processing_filter_clauses(filters)
+        all_clauses = clauses + result_processing_clauses
+        statement = (
+            select(func.count())
+            .select_from(NatIntake)
+            .outerjoin(NatBatch, NatBatch.intake_id == NatIntake.id)
+        )
+        if monitoring_requires_result_processing_join(filters):
+            statement = statement.outerjoin(
+                NatResultProcessingTask,
+                NatResultProcessingTask.nat_batch_id == NatBatch.id,
+            )
+        if all_clauses:
+            statement = statement.where(*all_clauses)
+        result = await self._session.execute(statement)
+        return int(result.scalar_one())
+
     async def list_monitoring_filtered(
         self,
-        filters: NatIntakeFilters,
+        filters: NatIntakeMonitoringFilters,
         sort: SortParams,
         limit: int,
         offset: int,
     ) -> Sequence[NatIntakeMonitoringListRecord]:
         clauses = build_intake_filter_clauses(filters)
+        result_processing_clauses = build_result_processing_filter_clauses(filters)
+        all_clauses = clauses + result_processing_clauses
         rejected_row_count = _rejected_row_count_subquery()
         tasks_total = _nullable_batch_task_count_subquery(
             extra_condition=None,
@@ -177,15 +205,25 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 tasks_pending_dispatch,
                 tasks_in_progress,
                 tasks_completed,
+                NatResultProcessingTask.status,
+                NatResultProcessingTask.matched_count,
+                NatResultProcessingTask.total_to_match,
+                NatResultProcessingTask.total_lines,
+                NatResultProcessingTask.error_message,
+                NatResultProcessingTask.completed_at,
             )
             .outerjoin(NatBatch, NatBatch.intake_id == NatIntake.id)
+            .outerjoin(
+                NatResultProcessingTask,
+                NatResultProcessingTask.nat_batch_id == NatBatch.id,
+            )
             .outerjoin(EmailMessage, EmailMessage.nat_intake_id == NatIntake.id)
             .order_by(order_by_sort_column(intake_sort_column(sort), sort.sort_order))
             .limit(limit)
             .offset(offset)
         )
-        if clauses:
-            statement = statement.where(*clauses)
+        if all_clauses:
+            statement = statement.where(*all_clauses)
         result = await self._session.execute(statement)
         return [
             NatIntakeMonitoringListRecord(
@@ -199,6 +237,18 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 tasks_pending_dispatch=_optional_int(tasks_pending_dispatch_value),
                 tasks_in_progress=_optional_int(tasks_in_progress_value),
                 tasks_completed=_optional_int(tasks_completed_value),
+                result_processing_status=result_processing_status,
+                result_processing_matched_count=_optional_int(
+                    result_processing_matched_count,
+                ),
+                result_processing_total_to_match=_optional_int(
+                    result_processing_total_to_match,
+                ),
+                result_processing_total_lines=_optional_int(
+                    result_processing_total_lines,
+                ),
+                result_processing_error_message=result_processing_error_message,
+                result_processing_completed_at=result_processing_completed_at,
             )
             for (
                 intake,
@@ -211,6 +261,12 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 tasks_pending_dispatch_value,
                 tasks_in_progress_value,
                 tasks_completed_value,
+                result_processing_status,
+                result_processing_matched_count,
+                result_processing_total_to_match,
+                result_processing_total_lines,
+                result_processing_error_message,
+                result_processing_completed_at,
             ) in result.all()
         ]
 
@@ -746,3 +802,17 @@ class NatDedupKeyRepository(SQLAlchemyRepository[NatDedupKey, UUID]):
             registered,
         )
         return registered
+
+
+class NatResultProcessingTaskRepository(
+    SQLAlchemyRepository[NatResultProcessingTask, int],
+):
+    def __init__(self, session: AsyncSession):
+        super().__init__(model=NatResultProcessingTask, session=session)
+
+    async def get_by_batch_id(self, batch_id: UUID) -> NatResultProcessingTask | None:
+        statement = select(NatResultProcessingTask).where(
+            NatResultProcessingTask.nat_batch_id == batch_id,
+        )
+        result = await self._session.execute(statement)
+        return result.scalar_one_or_none()

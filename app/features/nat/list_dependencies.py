@@ -17,9 +17,13 @@ from app.features.nat.query_params import (
     NAT_TASK_SORT_COLUMNS,
     NatBatchFilters,
     NatIntakeFilters,
+    NatIntakeMonitoringFilters,
     NatTaskFilters,
     SortOrder,
     SortParams,
+)
+from app.features.nat.result_processing_filter_parsing import (
+    parse_result_processing_status_filter,
 )
 from app.features.nat.services.listing.task_filter_parsing import parse_task_int_filter
 
@@ -101,6 +105,41 @@ def get_nat_intake_filters(
         created_at_to=filter_created_at_to,
         status=status_value,
         processing_paused=filter_processing_paused,
+    )
+
+
+def get_nat_intake_monitoring_filters(
+    filter_intake_id: Annotated[UUID | None, Query()] = None,
+    filter_sender_email: Annotated[str | None, Query()] = None,
+    filter_file_name: Annotated[str | None, Query()] = None,
+    filter_created_at_from: Annotated[datetime | None, Query()] = None,
+    filter_created_at_to: Annotated[datetime | None, Query()] = None,
+    filter_status: Annotated[str | None, Query()] = None,
+    filter_processing_paused: Annotated[bool | None, Query()] = None,
+    filter_result_processing_status: Annotated[str | None, Query()] = None,
+) -> NatIntakeMonitoringFilters:
+    base_filters = get_nat_intake_filters(
+        filter_intake_id=filter_intake_id,
+        filter_sender_email=filter_sender_email,
+        filter_file_name=filter_file_name,
+        filter_created_at_from=filter_created_at_from,
+        filter_created_at_to=filter_created_at_to,
+        filter_status=filter_status,
+        filter_processing_paused=filter_processing_paused,
+    )
+    result_processing_filter = parse_result_processing_status_filter(
+        filter_result_processing_status,
+    )
+    return NatIntakeMonitoringFilters(
+        intake_id=base_filters.intake_id,
+        sender_email=base_filters.sender_email,
+        file_name=base_filters.file_name,
+        created_at_from=base_filters.created_at_from,
+        created_at_to=base_filters.created_at_to,
+        status=base_filters.status,
+        processing_paused=base_filters.processing_paused,
+        result_processing_status=result_processing_filter.eq_value,
+        result_processing_status_is_null=result_processing_filter.is_null,
     )
 
 

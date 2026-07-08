@@ -22,6 +22,7 @@ from app.features.nat.models import (  # noqa: F401
     NatDedupKey,
     NatIntake,
     NatIntakeRowError,
+    NatResultProcessingTask,
     NatTask,
 )
 
