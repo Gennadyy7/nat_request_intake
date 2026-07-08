@@ -32,6 +32,7 @@ app = FastAPI(
     title='Nat Request Intake',
     description='',
     version='0.1.0',
+    root_path=settings.APP_ROOT_PATH,
 )
 
 setup_keycloak_middleware(
@@ -63,7 +64,8 @@ app.include_router(api_router, prefix='/api')
 
 @app.get('/')
 async def root_redirect() -> Response:
-    return Response(status_code=status.HTTP_302_FOUND, headers={'Location': '/docs'})
+    docs_path = f'{settings.APP_ROOT_PATH}/docs' if settings.APP_ROOT_PATH else '/docs'
+    return Response(status_code=status.HTTP_302_FOUND, headers={'Location': docs_path})
 
 
 @app.get('/health')

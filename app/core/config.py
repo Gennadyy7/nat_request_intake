@@ -16,6 +16,8 @@ class Settings(BaseSettings):
 
     db_url_env: str | None = Field(default=None, validation_alias='DB_URL')
 
+    APP_ROOT_PATH: str = ''
+
     APP_HOST: str
     APP_PORT: int
     APP_RELOAD: bool
@@ -85,6 +87,25 @@ class Settings(BaseSettings):
                     f'Invalid NAT IP field name {stripped!r}. '
                     f'Allowed values: {", ".join(member.value for member in NatIpFieldName)}'
                 ) from exc
+        return value
+
+    @field_validator('APP_ROOT_PATH', mode='before')
+    @classmethod
+    def validate_app_root_path(cls, value: object) -> str:
+        if value is None:
+            return ''
+        if not isinstance(value, str):
+            raise ValueError('APP_ROOT_PATH must be a string')
+        if value == '':
+            return ''
+        if any(character.isspace() for character in value):
+            raise ValueError('APP_ROOT_PATH must not contain whitespace')
+        if not value.startswith('/'):
+            raise ValueError('APP_ROOT_PATH must be empty or start with "/"')
+        if value.endswith('/'):
+            raise ValueError('APP_ROOT_PATH must not end with "/"')
+        if '//' in value:
+            raise ValueError('APP_ROOT_PATH must not contain "//"')
         return value
 
     @model_validator(mode='after')
