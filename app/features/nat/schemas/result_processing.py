@@ -7,7 +7,7 @@ from app.features.nat.constants import NatResultProcessingStatus
 
 
 class NatResultProcessingDetail(BaseModel):
-    id: int = Field(ge=1)
+    id: UUID
     batch_id: UUID
     status: NatResultProcessingStatus
     matched_count: int | None = None

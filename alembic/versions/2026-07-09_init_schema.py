@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: cd0964f127d6
+Revision ID: ce2fc8998387
 Revises:
-Create Date: 2026-07-08 10:19:48.204087
+Create Date: 2026-07-09 11:37:01.202474
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'cd0964f127d6'
+revision: str = 'ce2fc8998387'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -438,10 +438,9 @@ def upgrade() -> None:
         'aggregation_tasks',
         sa.Column(
             'id',
-            sa.Integer(),
-            autoincrement=True,
+            sa.Uuid(),
             nullable=False,
-            comment='Primary key (auto-increment)',
+            comment='Primary key (UUID v4, generated automatically)',
         ),
         sa.Column(
             'nat_batch_id',
@@ -514,6 +513,9 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint('id', name=op.f('pk_aggregation_tasks')),
         comment='External post-processing task for aggregating NAT results and SPIN3 matching',
+    )
+    op.create_index(
+        op.f('ix_aggregation_tasks_id'), 'aggregation_tasks', ['id'], unique=False
     )
     op.create_index(
         op.f('ix_aggregation_tasks_nat_batch_id'),
@@ -713,6 +715,7 @@ def downgrade() -> None:
     op.drop_index(
         op.f('ix_aggregation_tasks_nat_batch_id'), table_name='aggregation_tasks'
     )
+    op.drop_index(op.f('ix_aggregation_tasks_id'), table_name='aggregation_tasks')
     op.drop_table('aggregation_tasks')
     op.drop_index(
         op.f('ix_nat_intake_row_errors_intake_id'), table_name='nat_intake_row_errors'

@@ -403,11 +403,11 @@ class NatTask(Base, TimestampMixin):
 class NatResultProcessingTask(Base):
     __tablename__ = 'aggregation_tasks'
 
-    id: Mapped[int] = mapped_column(
-        Integer,
+    id: Mapped[UUID] = mapped_column(
         primary_key=True,
-        autoincrement=True,
-        comment='Primary key (auto-increment)',
+        default=uuid4,
+        index=True,
+        comment='Primary key (UUID v4, generated automatically)',
     )
 
     nat_batch_id: Mapped[UUID] = mapped_column(

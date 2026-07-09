@@ -805,7 +805,7 @@ class NatDedupKeyRepository(SQLAlchemyRepository[NatDedupKey, UUID]):
 
 
 class NatResultProcessingTaskRepository(
-    SQLAlchemyRepository[NatResultProcessingTask, int],
+    SQLAlchemyRepository[NatResultProcessingTask, UUID],
 ):
     def __init__(self, session: AsyncSession):
         super().__init__(model=NatResultProcessingTask, session=session)

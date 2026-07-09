@@ -12,7 +12,7 @@ from app.features.auth.dependencies import (
     require_email_poller_service,
 )
 from app.features.auth.schemas import User
-from app.features.nat.constants import ApiErrorCode
+from app.features.nat.constants import ApiErrorCode, ResultProcessingGetStatus
 from app.features.nat.dependencies import (
     get_batch_query_service,
     get_intake_monitoring_query_service,
@@ -295,7 +295,7 @@ async def get_batch_result_processing(
     ],
 ) -> NatResultProcessingDetail:
     result = await query_service.get_by_batch_id(batch_id)
-    if result.status == 'batch_not_found':
+    if result.status == ResultProcessingGetStatus.BATCH_NOT_FOUND:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
@@ -304,7 +304,7 @@ async def get_batch_result_processing(
                 'batch_id': str(batch_id),
             },
         )
-    if result.status == 'not_found':
+    if result.status == ResultProcessingGetStatus.RESULT_PROCESSING_NOT_FOUND:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={

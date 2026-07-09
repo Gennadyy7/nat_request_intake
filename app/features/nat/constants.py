@@ -104,6 +104,12 @@ class NatResultProcessingStatus(StrEnum):
     FAILED = 'failed'
 
 
+class ResultProcessingGetStatus(StrEnum):
+    OK = 'ok'
+    BATCH_NOT_FOUND = 'batch_not_found'
+    RESULT_PROCESSING_NOT_FOUND = 'result_processing_not_found'
+
+
 class ApiErrorCode(StrEnum):
     INTAKE_NOT_FOUND = 'INTAKE_NOT_FOUND'
     BATCH_NOT_FOUND = 'BATCH_NOT_FOUND'

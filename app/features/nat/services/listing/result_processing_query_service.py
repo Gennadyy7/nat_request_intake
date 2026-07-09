@@ -1,16 +1,18 @@
 from dataclasses import dataclass
-from typing import Literal
 from uuid import UUID
 
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
-from app.features.nat.constants import NatResultProcessingStatus
+from app.features.nat.constants import (
+    NatResultProcessingStatus,
+    ResultProcessingGetStatus,
+)
 from app.features.nat.models import NatResultProcessingTask
 from app.features.nat.schemas.result_processing import NatResultProcessingDetail
 
 
 @dataclass(frozen=True, slots=True)
 class ResultProcessingGetResult:
-    status: Literal['ok', 'batch_not_found', 'not_found']
+    status: ResultProcessingGetStatus
     detail: NatResultProcessingDetail | None = None
 
 
@@ -21,14 +23,18 @@ class ResultProcessingQueryService:
     async def get_by_batch_id(self, batch_id: UUID) -> ResultProcessingGetResult:
         batch = await self._uow.nat_batches.get_by_id(batch_id)
         if batch is None:
-            return ResultProcessingGetResult(status='batch_not_found')
+            return ResultProcessingGetResult(
+                status=ResultProcessingGetStatus.BATCH_NOT_FOUND,
+            )
 
         task = await self._uow.nat_result_processing_tasks.get_by_batch_id(batch_id)
         if task is None:
-            return ResultProcessingGetResult(status='not_found')
+            return ResultProcessingGetResult(
+                status=ResultProcessingGetStatus.RESULT_PROCESSING_NOT_FOUND,
+            )
 
         return ResultProcessingGetResult(
-            status='ok',
+            status=ResultProcessingGetStatus.OK,
             detail=self._to_detail(task),
         )
 
