@@ -59,7 +59,8 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
-app.include_router(api_router, prefix='/api')
+_api_prefix = '' if settings.APP_ROOT_PATH else '/api'
+app.include_router(api_router, prefix=_api_prefix)
 
 
 @app.get('/')
