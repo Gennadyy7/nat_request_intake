@@ -1,5 +1,6 @@
 from functools import cached_property
 from typing import Literal, Self
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -56,6 +57,9 @@ class Settings(BaseSettings):
     NAT_INPUT_FIELD_SEPARATOR: str
     NAT_MISSING_FIELD_PLACEHOLDER: str
     NAT_UPLOAD_BASE_DIR: str = 'backend/uploads/nat'
+    nat_upload_date_timezone_env: str = Field(
+        validation_alias='NAT_UPLOAD_DATE_TIMEZONE',
+    )
     NAT_MAX_EXPANSION_PER_FIELD: int = Field(default=256, ge=1)
     NAT_MAX_TOTAL_EXPANSION_PRODUCT: int = Field(default=256, ge=1)
     nat_cidr_allowed_fields_env: str = Field(
@@ -87,6 +91,26 @@ class Settings(BaseSettings):
                     f'Invalid NAT IP field name {stripped!r}. '
                     f'Allowed values: {", ".join(member.value for member in NatIpFieldName)}'
                 ) from exc
+        return value
+
+    @field_validator('nat_upload_date_timezone_env', mode='before')
+    @classmethod
+    def validate_nat_upload_date_timezone(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise ValueError('NAT_UPLOAD_DATE_TIMEZONE must be a string')
+        if not value:
+            raise ValueError('NAT_UPLOAD_DATE_TIMEZONE must not be empty')
+        if value != value.strip():
+            raise ValueError(
+                'NAT_UPLOAD_DATE_TIMEZONE must not contain leading or trailing whitespace'
+            )
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(
+                f'Invalid NAT_UPLOAD_DATE_TIMEZONE value {value!r}. '
+                'Use UTC or a valid IANA timezone name (e.g. Europe/Minsk).'
+            ) from exc
         return value
 
     @field_validator('APP_ROOT_PATH', mode='before')
@@ -189,6 +213,10 @@ class Settings(BaseSettings):
             for internal_network in self.nat_beltelecom_internal_networks_env.split(',')
             if internal_network.strip()
         }
+
+    @cached_property
+    def NAT_UPLOAD_DATE_TIMEZONE(self) -> ZoneInfo:  # noqa: N802
+        return ZoneInfo(self.nat_upload_date_timezone_env)
 
 
 settings = Settings()  # type: ignore[call-arg]
