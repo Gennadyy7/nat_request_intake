@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     APP_PORT: int
     APP_RELOAD: bool
 
+    CSP_ENABLED: bool
+    DOCS_ENABLED: bool
+
     KEYCLOAK_URL: str
     KEYCLOAK_REALM: str
     KEYCLOAK_CLIENT_ID: str
