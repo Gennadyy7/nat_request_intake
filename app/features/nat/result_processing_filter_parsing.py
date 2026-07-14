@@ -42,3 +42,25 @@ def parse_result_processing_status_filter(
                 ],
             },
         ) from exc
+
+
+def parse_result_processing_list_status_filter(
+    raw: str | None,
+) -> NatResultProcessingStatus | None:
+    """Parse status for /spin/result-processing list (enum only, no null sentinel)."""
+    if raw is None:
+        return None
+    try:
+        return NatResultProcessingStatus(raw)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail={
+                'code': ApiErrorCode.INVALID_FILTER_RESULT_PROCESSING_STATUS,
+                'message': get_message(
+                    ApiErrorCode.INVALID_FILTER_RESULT_PROCESSING_STATUS
+                ),
+                'filter_status': raw,
+                'allowed': [member.value for member in NatResultProcessingStatus],
+            },
+        ) from exc

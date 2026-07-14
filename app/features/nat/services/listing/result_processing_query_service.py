@@ -7,7 +7,13 @@ from app.features.nat.constants import (
     ResultProcessingGetStatus,
 )
 from app.features.nat.models import NatResultProcessingTask
-from app.features.nat.schemas.result_processing import NatResultProcessingDetail
+from app.features.nat.pagination import PaginationParams, build_paginated_response
+from app.features.nat.query_params import NatResultProcessingFilters, SortParams
+from app.features.nat.schemas.pagination import PaginatedResponse
+from app.features.nat.schemas.result_processing import (
+    NatResultProcessingDetail,
+    NatResultProcessingListItem,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,6 +25,41 @@ class ResultProcessingGetResult:
 class ResultProcessingQueryService:
     def __init__(self, uow: UnitOfWorkProtocol) -> None:
         self._uow = uow
+
+    async def list_result_processing(
+        self,
+        *,
+        filters: NatResultProcessingFilters,
+        sort: SortParams,
+        pagination: PaginationParams,
+    ) -> PaginatedResponse[NatResultProcessingListItem]:
+        total_items = await self._uow.nat_result_processing_tasks.count_filtered(
+            filters
+        )
+        tasks = await self._uow.nat_result_processing_tasks.list_filtered(
+            filters,
+            sort,
+            limit=pagination.limit,
+            offset=pagination.offset,
+        )
+        items = [self._to_list_item(task) for task in tasks]
+        return build_paginated_response(
+            items,
+            total_items=total_items,
+            page=pagination.page,
+            limit=pagination.limit,
+        )
+
+    async def get_by_id(
+        self,
+        result_processing_id: UUID,
+    ) -> NatResultProcessingDetail | None:
+        task = await self._uow.nat_result_processing_tasks.get_by_id(
+            result_processing_id
+        )
+        if task is None:
+            return None
+        return self._to_detail(task)
 
     async def get_by_batch_id(self, batch_id: UUID) -> ResultProcessingGetResult:
         batch = await self._uow.nat_batches.get_by_id(batch_id)
@@ -38,8 +79,11 @@ class ResultProcessingQueryService:
             detail=self._to_detail(task),
         )
 
-    def _to_detail(self, task: NatResultProcessingTask) -> NatResultProcessingDetail:
-        return NatResultProcessingDetail(
+    def _to_list_item(
+        self,
+        task: NatResultProcessingTask,
+    ) -> NatResultProcessingListItem:
+        return NatResultProcessingListItem(
             id=task.id,
             batch_id=task.nat_batch_id,
             status=NatResultProcessingStatus(task.status),
@@ -49,6 +93,11 @@ class ResultProcessingQueryService:
             error_message=task.error_message,
             created_at=task.created_at,
             completed_at=task.completed_at,
+        )
+
+    def _to_detail(self, task: NatResultProcessingTask) -> NatResultProcessingDetail:
+        return NatResultProcessingDetail(
+            **self._to_list_item(task).model_dump(),
             aggregated_file_path=task.aggregated_file_path,
             spin_matched_file_path=task.spin_matched_file_path,
         )

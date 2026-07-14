@@ -26,6 +26,7 @@ from app.features.nat.query_params import (
     NatBatchFilters,
     NatIntakeFilters,
     NatIntakeMonitoringFilters,
+    NatResultProcessingFilters,
     NatTaskFilters,
     SortOrder,
     SortParams,
@@ -35,11 +36,13 @@ from app.features.nat.repository_query import (
     build_batch_filter_clauses,
     build_intake_filter_clauses,
     build_result_processing_filter_clauses,
+    build_result_processing_list_filter_clauses,
     build_task_filter_clauses,
     intake_list_requires_batch_join,
     intake_sort_column,
     monitoring_requires_result_processing_join,
     order_by_sort_column,
+    result_processing_sort_column,
     row_error_sort_expression,
     task_sort_column,
 )
@@ -816,3 +819,35 @@ class NatResultProcessingTaskRepository(
         )
         result = await self._session.execute(statement)
         return result.scalar_one_or_none()
+
+    async def count_filtered(self, filters: NatResultProcessingFilters) -> int:
+        clauses = build_result_processing_list_filter_clauses(filters)
+        statement = select(func.count()).select_from(NatResultProcessingTask)
+        if clauses:
+            statement = statement.where(*clauses)
+        result = await self._session.execute(statement)
+        return int(result.scalar_one())
+
+    async def list_filtered(
+        self,
+        filters: NatResultProcessingFilters,
+        sort: SortParams,
+        limit: int,
+        offset: int,
+    ) -> Sequence[NatResultProcessingTask]:
+        clauses = build_result_processing_list_filter_clauses(filters)
+        statement = (
+            select(NatResultProcessingTask)
+            .order_by(
+                order_by_sort_column(
+                    result_processing_sort_column(sort),
+                    sort.sort_order,
+                )
+            )
+            .limit(limit)
+            .offset(offset)
+        )
+        if clauses:
+            statement = statement.where(*clauses)
+        result = await self._session.execute(statement)
+        return list(result.scalars().all())

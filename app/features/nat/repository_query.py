@@ -12,6 +12,7 @@ from app.features.nat.query_params import (
     NatBatchFilters,
     NatIntakeFilters,
     NatIntakeMonitoringFilters,
+    NatResultProcessingFilters,
     NatTaskFilters,
     SortOrder,
     SortParams,
@@ -125,6 +126,29 @@ def build_task_filter_clauses(
     return clauses
 
 
+def build_result_processing_list_filter_clauses(
+    filters: NatResultProcessingFilters,
+) -> list[ColumnElement[bool]]:
+    clauses: list[ColumnElement[bool]] = []
+    if filters.result_processing_id is not None:
+        clauses.append(NatResultProcessingTask.id == filters.result_processing_id)
+    if filters.batch_id is not None:
+        clauses.append(NatResultProcessingTask.nat_batch_id == filters.batch_id)
+    if filters.status is not None:
+        clauses.append(NatResultProcessingTask.status == filters.status.value)
+    if filters.created_at_from is not None:
+        clauses.append(NatResultProcessingTask.created_at >= filters.created_at_from)
+    if filters.created_at_to is not None:
+        clauses.append(NatResultProcessingTask.created_at <= filters.created_at_to)
+    if filters.completed_at_from is not None:
+        clauses.append(
+            NatResultProcessingTask.completed_at >= filters.completed_at_from
+        )
+    if filters.completed_at_to is not None:
+        clauses.append(NatResultProcessingTask.completed_at <= filters.completed_at_to)
+    return clauses
+
+
 def intake_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:
     return {
         'created_at': NatIntake.created_at,
@@ -150,6 +174,15 @@ def task_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:
         'created_at': NatTask.created_at,
         'status': NatTask.status,
         'batch_id': NatTask.batch_id,
+    }[sort.sort_by]
+
+
+def result_processing_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:
+    return {
+        'created_at': NatResultProcessingTask.created_at,
+        'status': NatResultProcessingTask.status,
+        'batch_id': NatResultProcessingTask.nat_batch_id,
+        'completed_at': NatResultProcessingTask.completed_at,
     }[sort.sort_by]
 
 

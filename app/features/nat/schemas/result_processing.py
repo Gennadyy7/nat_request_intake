@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from app.features.nat.constants import NatResultProcessingStatus
 
 
-class NatResultProcessingDetail(BaseModel):
+class NatResultProcessingListItem(BaseModel):
     id: UUID
     batch_id: UUID
     status: NatResultProcessingStatus
@@ -16,5 +16,8 @@ class NatResultProcessingDetail(BaseModel):
     error_message: str | None = None
     created_at: datetime
     completed_at: datetime | None = None
+
+
+class NatResultProcessingDetail(NatResultProcessingListItem):
     aggregated_file_path: str | None = None
     spin_matched_file_path: str | None = None

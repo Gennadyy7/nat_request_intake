@@ -16,6 +16,9 @@ NAT_BATCH_SORT_COLUMNS: Final[frozenset[str]] = frozenset(
 NAT_TASK_SORT_COLUMNS: Final[frozenset[str]] = frozenset(
     {'created_at', 'status', 'batch_id'}
 )
+NAT_RESULT_PROCESSING_SORT_COLUMNS: Final[frozenset[str]] = frozenset(
+    {'created_at', 'status', 'batch_id', 'completed_at'}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,3 +65,14 @@ class NatTaskFilters:
     region: str | None = None
     created_at_from: datetime | None = None
     created_at_to: datetime | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class NatResultProcessingFilters:
+    result_processing_id: UUID | None = None
+    batch_id: UUID | None = None
+    status: NatResultProcessingStatus | None = None
+    created_at_from: datetime | None = None
+    created_at_to: datetime | None = None
+    completed_at_from: datetime | None = None
+    completed_at_to: datetime | None = None

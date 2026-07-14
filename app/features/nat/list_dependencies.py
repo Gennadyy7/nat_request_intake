@@ -14,15 +14,18 @@ from app.features.nat.pagination import (
 from app.features.nat.query_params import (
     NAT_BATCH_SORT_COLUMNS,
     NAT_INTAKE_SORT_COLUMNS,
+    NAT_RESULT_PROCESSING_SORT_COLUMNS,
     NAT_TASK_SORT_COLUMNS,
     NatBatchFilters,
     NatIntakeFilters,
     NatIntakeMonitoringFilters,
+    NatResultProcessingFilters,
     NatTaskFilters,
     SortOrder,
     SortParams,
 )
 from app.features.nat.result_processing_filter_parsing import (
+    parse_result_processing_list_status_filter,
     parse_result_processing_status_filter,
 )
 from app.features.nat.services.listing.task_filter_parsing import parse_task_int_filter
@@ -69,6 +72,19 @@ def get_nat_task_sort_params(
         sort_by=sort_by,
         sort_order=sort_order,
         allowed_columns=NAT_TASK_SORT_COLUMNS,
+        default_sort_by='created_at',
+        default_sort_order='desc',
+    )
+
+
+def get_nat_result_processing_sort_params(
+    sort_by: Annotated[str | None, Query()] = None,
+    sort_order: Annotated[str | None, Query()] = None,
+) -> SortParams:
+    return resolve_sort_params(
+        sort_by=sort_by,
+        sort_order=sort_order,
+        allowed_columns=NAT_RESULT_PROCESSING_SORT_COLUMNS,
         default_sort_by='created_at',
         default_sort_order='desc',
     )
@@ -203,4 +219,24 @@ def get_nat_task_filters(
         region=filter_region,
         created_at_from=filter_created_at_from,
         created_at_to=filter_created_at_to,
+    )
+
+
+def get_nat_result_processing_filters(
+    filter_result_processing_id: Annotated[UUID | None, Query()] = None,
+    filter_batch_id: Annotated[UUID | None, Query()] = None,
+    filter_status: Annotated[str | None, Query()] = None,
+    filter_created_at_from: Annotated[datetime | None, Query()] = None,
+    filter_created_at_to: Annotated[datetime | None, Query()] = None,
+    filter_completed_at_from: Annotated[datetime | None, Query()] = None,
+    filter_completed_at_to: Annotated[datetime | None, Query()] = None,
+) -> NatResultProcessingFilters:
+    return NatResultProcessingFilters(
+        result_processing_id=filter_result_processing_id,
+        batch_id=filter_batch_id,
+        status=parse_result_processing_list_status_filter(filter_status),
+        created_at_from=filter_created_at_from,
+        created_at_to=filter_created_at_to,
+        completed_at_from=filter_completed_at_from,
+        completed_at_to=filter_completed_at_to,
     )
