@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from datetime import datetime
 
 from app.core.config import settings
