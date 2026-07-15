@@ -9,6 +9,7 @@ from app.features.nat.constants import NatResultProcessingStatus
 class NatResultProcessingListItem(BaseModel):
     id: UUID
     batch_id: UUID
+    intake_number: int = Field(ge=1)
     status: NatResultProcessingStatus
     matched_count: int | None = None
     total_to_match: int | None = None

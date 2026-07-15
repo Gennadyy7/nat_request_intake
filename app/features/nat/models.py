@@ -4,9 +4,11 @@ from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
+    Identity,
     Index,
     Integer,
     String,
@@ -28,6 +30,15 @@ class NatIntake(Base, TimestampMixin):
         default=uuid4,
         index=True,
         comment='Primary key (UUID v4, generated automatically)',
+    )
+
+    number: Mapped[int] = mapped_column(
+        BigInteger,
+        Identity(start=1, increment=1),
+        nullable=False,
+        unique=True,
+        index=True,
+        comment='Human-readable sequential intake number (DB-generated)',
     )
 
     sender_email: Mapped[str] = mapped_column(
@@ -80,6 +91,7 @@ class NatIntake(Base, TimestampMixin):
         return (
             f'NatIntake('
             f'id={self.id}, '
+            f'number={self.number}, '
             f'file_name={self.file_name}, '
             f'status={self.status}, '
             f'sender_email={self.sender_email})'

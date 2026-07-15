@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: ce2fc8998387
+Revision ID: d65e043470aa
 Revises:
-Create Date: 2026-07-09 11:37:01.202474
+Create Date: 2026-07-15 14:42:07.249665
 
 """
 
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'ce2fc8998387'
+revision: str = 'd65e043470aa'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -145,6 +145,13 @@ def upgrade() -> None:
             comment='Primary key (UUID v4, generated automatically)',
         ),
         sa.Column(
+            'number',
+            sa.BigInteger(),
+            sa.Identity(always=False, start=1, increment=1),
+            nullable=False,
+            comment='Human-readable sequential intake number (DB-generated)',
+        ),
+        sa.Column(
             'sender_email',
             sa.String(length=254),
             nullable=False,
@@ -184,6 +191,9 @@ def upgrade() -> None:
         comment='NAT file intake attempts including rejected and accepted uploads',
     )
     op.create_index(op.f('ix_nat_intakes_id'), 'nat_intakes', ['id'], unique=False)
+    op.create_index(
+        op.f('ix_nat_intakes_number'), 'nat_intakes', ['number'], unique=True
+    )
     op.create_index(
         op.f('ix_nat_intakes_sender_email'),
         'nat_intakes',
@@ -741,6 +751,7 @@ def downgrade() -> None:
     op.drop_table('email_messages')
     op.drop_index(op.f('ix_nat_intakes_status'), table_name='nat_intakes')
     op.drop_index(op.f('ix_nat_intakes_sender_email'), table_name='nat_intakes')
+    op.drop_index(op.f('ix_nat_intakes_number'), table_name='nat_intakes')
     op.drop_index(op.f('ix_nat_intakes_id'), table_name='nat_intakes')
     op.drop_table('nat_intakes')
     op.drop_table('nat_dedup_keys')

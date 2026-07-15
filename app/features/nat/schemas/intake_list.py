@@ -14,6 +14,7 @@ from app.features.nat.schemas.pagination import PaginationMeta
 
 class NatIntakeListItem(BaseModel):
     id: UUID
+    number: int = Field(ge=1)
     sender_email: EmailStr
     file_name: str
     status: IntakeStatus
@@ -26,6 +27,7 @@ class NatIntakeListItem(BaseModel):
 
 class NatIntakeDetail(BaseModel):
     id: UUID
+    number: int = Field(ge=1)
     sender_email: EmailStr
     file_name: str
     status: IntakeStatus

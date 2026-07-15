@@ -9,6 +9,7 @@ class NatTaskListItem(BaseModel):
 
     id: UUID
     batch_id: UUID
+    intake_number: int = Field(ge=1)
     nat_request_id: int | None = None
     datetime_from: str
     datetime_to: str

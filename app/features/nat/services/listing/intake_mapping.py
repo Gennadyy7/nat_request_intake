@@ -9,6 +9,7 @@ def to_intake_list_item(record: NatIntakeListRecord) -> NatIntakeListItem:
     error_code = _parse_error_code(intake.error_code)
     return NatIntakeListItem(
         id=intake.id,
+        number=intake.number,
         sender_email=intake.sender_email,
         file_name=intake.file_name,
         status=IntakeStatus(intake.status),

@@ -41,6 +41,8 @@ def build_intake_filter_clauses(
         clauses.append(NatIntake.status == filters.status.value)
     if filters.intake_id is not None:
         clauses.append(NatIntake.id == filters.intake_id)
+    if filters.intake_number is not None:
+        clauses.append(NatIntake.number == filters.intake_number)
     if filters.processing_paused is True:
         clauses.append(NatBatch.id.is_not(None))
         clauses.append(NatBatch.processing_paused.is_(True))
@@ -100,6 +102,8 @@ def build_batch_filter_clauses(
         clauses.append(NatBatch.row_count <= filters.row_count_max)
     if filters.batch_id is not None:
         clauses.append(NatBatch.id == filters.batch_id)
+    if filters.intake_number is not None:
+        clauses.append(NatIntake.number == filters.intake_number)
     return clauses
 
 
@@ -109,6 +113,8 @@ def build_task_filter_clauses(
     clauses: list[ColumnElement[bool]] = []
     if filters.batch_id is not None:
         clauses.append(NatTask.batch_id == filters.batch_id)
+    if filters.intake_number is not None:
+        clauses.append(NatIntake.number == filters.intake_number)
     if filters.status_is_null:
         clauses.append(NatTask.status.is_(None))
     elif filters.status is not None:
@@ -126,6 +132,10 @@ def build_task_filter_clauses(
     return clauses
 
 
+def task_list_requires_intake_join(filters: NatTaskFilters) -> bool:
+    return filters.intake_number is not None
+
+
 def build_result_processing_list_filter_clauses(
     filters: NatResultProcessingFilters,
 ) -> list[ColumnElement[bool]]:
@@ -134,6 +144,8 @@ def build_result_processing_list_filter_clauses(
         clauses.append(NatResultProcessingTask.id == filters.result_processing_id)
     if filters.batch_id is not None:
         clauses.append(NatResultProcessingTask.nat_batch_id == filters.batch_id)
+    if filters.intake_number is not None:
+        clauses.append(NatIntake.number == filters.intake_number)
     if filters.status is not None:
         clauses.append(NatResultProcessingTask.status == filters.status.value)
     if filters.created_at_from is not None:
@@ -147,6 +159,12 @@ def build_result_processing_list_filter_clauses(
     if filters.completed_at_to is not None:
         clauses.append(NatResultProcessingTask.completed_at <= filters.completed_at_to)
     return clauses
+
+
+def result_processing_list_requires_intake_join(
+    filters: NatResultProcessingFilters,
+) -> bool:
+    return filters.intake_number is not None
 
 
 def intake_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:

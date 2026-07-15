@@ -19,6 +19,7 @@ class RowErrorResponse(BaseModel):
 
 class IntakeResponse(BaseModel):
     intake_id: UUID
+    number: int = Field(ge=1)
     batch_id: UUID | None = None
     status: IntakeStatus
     file_name: str

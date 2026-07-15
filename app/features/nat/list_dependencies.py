@@ -92,6 +92,7 @@ def get_nat_result_processing_sort_params(
 
 def get_nat_intake_filters(
     filter_intake_id: Annotated[UUID | None, Query()] = None,
+    filter_intake_number: Annotated[int | None, Query(ge=1)] = None,
     filter_sender_email: Annotated[str | None, Query()] = None,
     filter_file_name: Annotated[str | None, Query()] = None,
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
@@ -115,6 +116,7 @@ def get_nat_intake_filters(
             ) from exc
     return NatIntakeFilters(
         intake_id=filter_intake_id,
+        intake_number=filter_intake_number,
         sender_email=filter_sender_email,
         file_name=filter_file_name,
         created_at_from=filter_created_at_from,
@@ -126,6 +128,7 @@ def get_nat_intake_filters(
 
 def get_nat_intake_monitoring_filters(
     filter_intake_id: Annotated[UUID | None, Query()] = None,
+    filter_intake_number: Annotated[int | None, Query(ge=1)] = None,
     filter_sender_email: Annotated[str | None, Query()] = None,
     filter_file_name: Annotated[str | None, Query()] = None,
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
@@ -136,6 +139,7 @@ def get_nat_intake_monitoring_filters(
 ) -> NatIntakeMonitoringFilters:
     base_filters = get_nat_intake_filters(
         filter_intake_id=filter_intake_id,
+        filter_intake_number=filter_intake_number,
         filter_sender_email=filter_sender_email,
         filter_file_name=filter_file_name,
         filter_created_at_from=filter_created_at_from,
@@ -148,6 +152,7 @@ def get_nat_intake_monitoring_filters(
     )
     return NatIntakeMonitoringFilters(
         intake_id=base_filters.intake_id,
+        intake_number=base_filters.intake_number,
         sender_email=base_filters.sender_email,
         file_name=base_filters.file_name,
         created_at_from=base_filters.created_at_from,
@@ -161,6 +166,7 @@ def get_nat_intake_monitoring_filters(
 
 def get_nat_batch_filters(
     filter_batch_id: Annotated[UUID | None, Query()] = None,
+    filter_intake_number: Annotated[int | None, Query(ge=1)] = None,
     filter_sender_email: Annotated[str | None, Query()] = None,
     filter_file_name: Annotated[str | None, Query()] = None,
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
@@ -170,6 +176,7 @@ def get_nat_batch_filters(
 ) -> NatBatchFilters:
     return NatBatchFilters(
         batch_id=filter_batch_id,
+        intake_number=filter_intake_number,
         sender_email=filter_sender_email,
         file_name=filter_file_name,
         created_at_from=filter_created_at_from,
@@ -199,6 +206,7 @@ def get_nat_intake_row_errors_sort_order(
 
 def get_nat_task_filters(
     filter_batch_id: Annotated[UUID | None, Query()] = None,
+    filter_intake_number: Annotated[int | None, Query(ge=1)] = None,
     filter_status: Annotated[str | None, Query()] = None,
     filter_nat_request_id: Annotated[str | None, Query()] = None,
     filter_region: Annotated[str | None, Query()] = None,
@@ -212,6 +220,7 @@ def get_nat_task_filters(
     )
     return NatTaskFilters(
         batch_id=filter_batch_id,
+        intake_number=filter_intake_number,
         status=status_filter.eq_value,
         status_is_null=status_filter.is_null,
         nat_request_id=nat_request_id_filter.eq_value,
@@ -225,6 +234,7 @@ def get_nat_task_filters(
 def get_nat_result_processing_filters(
     filter_result_processing_id: Annotated[UUID | None, Query()] = None,
     filter_batch_id: Annotated[UUID | None, Query()] = None,
+    filter_intake_number: Annotated[int | None, Query(ge=1)] = None,
     filter_status: Annotated[str | None, Query()] = None,
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
     filter_created_at_to: Annotated[datetime | None, Query()] = None,
@@ -234,6 +244,7 @@ def get_nat_result_processing_filters(
     return NatResultProcessingFilters(
         result_processing_id=filter_result_processing_id,
         batch_id=filter_batch_id,
+        intake_number=filter_intake_number,
         status=parse_result_processing_list_status_filter(filter_status),
         created_at_from=filter_created_at_from,
         created_at_to=filter_created_at_to,

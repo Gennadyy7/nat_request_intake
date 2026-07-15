@@ -2,7 +2,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-from app.features.nat.models import NatBatch, NatIntake
+from app.features.nat.models import (
+    NatBatch,
+    NatIntake,
+    NatResultProcessingTask,
+    NatTask,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -10,6 +15,7 @@ class NatBatchListRecord:
     batch: NatBatch
     sender_email: str
     original_file_name: str
+    intake_number: int
     tasks_count: int
 
 
@@ -18,6 +24,7 @@ class NatBatchDetailRecord:
     batch: NatBatch
     sender_email: str
     original_file_name: str
+    intake_number: int
     tasks_count: int
 
 
@@ -26,6 +33,18 @@ class NatIntakeListRecord:
     intake: NatIntake
     batch_id: UUID | None
     processing_paused: bool | None
+
+
+@dataclass(frozen=True, slots=True)
+class NatTaskListRecord:
+    task: NatTask
+    intake_number: int
+
+
+@dataclass(frozen=True, slots=True)
+class NatResultProcessingListRecord:
+    task: NatResultProcessingTask
+    intake_number: int
 
 
 @dataclass(frozen=True, slots=True)

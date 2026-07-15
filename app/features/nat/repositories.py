@@ -42,8 +42,10 @@ from app.features.nat.repository_query import (
     intake_sort_column,
     monitoring_requires_result_processing_join,
     order_by_sort_column,
+    result_processing_list_requires_intake_join,
     result_processing_sort_column,
     row_error_sort_expression,
+    task_list_requires_intake_join,
     task_sort_column,
 )
 from app.features.nat.repository_records import (
@@ -51,6 +53,8 @@ from app.features.nat.repository_records import (
     NatBatchListRecord,
     NatIntakeListRecord,
     NatIntakeMonitoringListRecord,
+    NatResultProcessingListRecord,
+    NatTaskListRecord,
 )
 from app.features.nat.services.deduplication.deduplication_key import build_key_hash
 
@@ -393,6 +397,7 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
                 NatBatch,
                 NatIntake.sender_email,
                 NatIntake.file_name,
+                NatIntake.number,
                 tasks_count,
             )
             .join(NatIntake, NatBatch.intake_id == NatIntake.id)
@@ -408,9 +413,16 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
                 batch=batch,
                 sender_email=sender_email,
                 original_file_name=original_file_name,
+                intake_number=int(intake_number),
                 tasks_count=int(tasks_count_value),
             )
-            for batch, sender_email, original_file_name, tasks_count_value in result.all()
+            for (
+                batch,
+                sender_email,
+                original_file_name,
+                intake_number,
+                tasks_count_value,
+            ) in result.all()
         ]
 
     async def get_detail_by_id(self, batch_id: UUID) -> NatBatchDetailRecord | None:
@@ -420,6 +432,7 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
                 NatBatch,
                 NatIntake.sender_email,
                 NatIntake.file_name,
+                NatIntake.number,
                 tasks_count,
             )
             .join(NatIntake, NatBatch.intake_id == NatIntake.id)
@@ -429,11 +442,12 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
         row = result.one_or_none()
         if row is None:
             return None
-        batch, sender_email, original_file_name, tasks_count_value = row
+        batch, sender_email, original_file_name, intake_number, tasks_count_value = row
         return NatBatchDetailRecord(
             batch=batch,
             sender_email=sender_email,
             original_file_name=original_file_name,
+            intake_number=int(intake_number),
             tasks_count=int(tasks_count_value),
         )
 
@@ -569,6 +583,11 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
     async def count_filtered(self, filters: NatTaskFilters) -> int:
         clauses = build_task_filter_clauses(filters)
         statement = select(func.count()).select_from(NatTask)
+        if task_list_requires_intake_join(filters):
+            statement = statement.join(NatBatch, NatTask.batch_id == NatBatch.id).join(
+                NatIntake,
+                NatBatch.intake_id == NatIntake.id,
+            )
         if clauses:
             statement = statement.where(*clauses)
         result = await self._session.execute(statement)
@@ -580,10 +599,12 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
         sort: SortParams,
         limit: int,
         offset: int,
-    ) -> Sequence[NatTask]:
+    ) -> Sequence[NatTaskListRecord]:
         clauses = build_task_filter_clauses(filters)
         statement = (
-            select(NatTask)
+            select(NatTask, NatIntake.number)
+            .join(NatBatch, NatTask.batch_id == NatBatch.id)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
             .order_by(order_by_sort_column(task_sort_column(sort), sort.sort_order))
             .limit(limit)
             .offset(offset)
@@ -591,7 +612,27 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
         if clauses:
             statement = statement.where(*clauses)
         result = await self._session.execute(statement)
-        return list(result.scalars().all())
+        return [
+            NatTaskListRecord(task=task, intake_number=int(intake_number))
+            for task, intake_number in result.all()
+        ]
+
+    async def get_list_record_by_id(
+        self,
+        task_id: UUID,
+    ) -> NatTaskListRecord | None:
+        statement = (
+            select(NatTask, NatIntake.number)
+            .join(NatBatch, NatTask.batch_id == NatBatch.id)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
+            .where(NatTask.id == task_id)
+        )
+        result = await self._session.execute(statement)
+        row = result.one_or_none()
+        if row is None:
+            return None
+        task, intake_number = row
+        return NatTaskListRecord(task=task, intake_number=int(intake_number))
 
     async def claim_for_dispatch(self, limit: int | None) -> Sequence[NatTask]:
         statement = (
@@ -820,9 +861,57 @@ class NatResultProcessingTaskRepository(
         result = await self._session.execute(statement)
         return result.scalar_one_or_none()
 
+    async def get_list_record_by_id(
+        self,
+        result_processing_id: UUID,
+    ) -> NatResultProcessingListRecord | None:
+        statement = (
+            select(NatResultProcessingTask, NatIntake.number)
+            .join(NatBatch, NatResultProcessingTask.nat_batch_id == NatBatch.id)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
+            .where(NatResultProcessingTask.id == result_processing_id)
+        )
+        result = await self._session.execute(statement)
+        row = result.one_or_none()
+        if row is None:
+            return None
+        task, intake_number = row
+        return NatResultProcessingListRecord(
+            task=task,
+            intake_number=int(intake_number),
+        )
+
+    async def get_list_record_by_batch_id(
+        self,
+        batch_id: UUID,
+    ) -> NatResultProcessingListRecord | None:
+        statement = (
+            select(NatResultProcessingTask, NatIntake.number)
+            .join(NatBatch, NatResultProcessingTask.nat_batch_id == NatBatch.id)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
+            .where(NatResultProcessingTask.nat_batch_id == batch_id)
+        )
+        result = await self._session.execute(statement)
+        row = result.one_or_none()
+        if row is None:
+            return None
+        task, intake_number = row
+        return NatResultProcessingListRecord(
+            task=task,
+            intake_number=int(intake_number),
+        )
+
     async def count_filtered(self, filters: NatResultProcessingFilters) -> int:
         clauses = build_result_processing_list_filter_clauses(filters)
         statement = select(func.count()).select_from(NatResultProcessingTask)
+        if result_processing_list_requires_intake_join(filters):
+            statement = statement.join(
+                NatBatch,
+                NatResultProcessingTask.nat_batch_id == NatBatch.id,
+            ).join(
+                NatIntake,
+                NatBatch.intake_id == NatIntake.id,
+            )
         if clauses:
             statement = statement.where(*clauses)
         result = await self._session.execute(statement)
@@ -834,10 +923,12 @@ class NatResultProcessingTaskRepository(
         sort: SortParams,
         limit: int,
         offset: int,
-    ) -> Sequence[NatResultProcessingTask]:
+    ) -> Sequence[NatResultProcessingListRecord]:
         clauses = build_result_processing_list_filter_clauses(filters)
         statement = (
-            select(NatResultProcessingTask)
+            select(NatResultProcessingTask, NatIntake.number)
+            .join(NatBatch, NatResultProcessingTask.nat_batch_id == NatBatch.id)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
             .order_by(
                 order_by_sort_column(
                     result_processing_sort_column(sort),
@@ -850,4 +941,10 @@ class NatResultProcessingTaskRepository(
         if clauses:
             statement = statement.where(*clauses)
         result = await self._session.execute(statement)
-        return list(result.scalars().all())
+        return [
+            NatResultProcessingListRecord(
+                task=task,
+                intake_number=int(intake_number),
+            )
+            for task, intake_number in result.all()
+        ]

@@ -308,6 +308,7 @@ class IntakeService:
 
         return self._build_response(
             intake_id=intake.id,
+            number=intake.number,
             status=status,
             file_name=filename,
             sender_email=sender_email,
@@ -371,6 +372,7 @@ class IntakeService:
         await self._uow.commit()
         return self._build_response(
             intake_id=intake.id,
+            number=intake.number,
             status=IntakeStatus.REJECTED,
             file_name=intake.file_name,
             sender_email=sender_email,
@@ -400,6 +402,7 @@ class IntakeService:
         await self._uow.commit()
         return self._build_response(
             intake_id=intake.id,
+            number=intake.number,
             status=IntakeStatus.REJECTED,
             file_name=intake.file_name,
             sender_email=sender_email,
@@ -414,6 +417,7 @@ class IntakeService:
         self,
         *,
         intake_id: UUID,
+        number: int,
         status: IntakeStatus,
         file_name: str,
         sender_email: EmailStr,
@@ -425,6 +429,7 @@ class IntakeService:
     ) -> IntakeResponse:
         return IntakeResponse(
             intake_id=intake_id,
+            number=number,
             batch_id=batch_id,
             status=status,
             file_name=file_name,

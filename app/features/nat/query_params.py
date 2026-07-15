@@ -30,6 +30,7 @@ class SortParams:
 @dataclass(frozen=True, slots=True)
 class NatIntakeFilters:
     intake_id: UUID | None = None
+    intake_number: int | None = None
     sender_email: str | None = None
     file_name: str | None = None
     created_at_from: datetime | None = None
@@ -47,6 +48,7 @@ class NatIntakeMonitoringFilters(NatIntakeFilters):
 @dataclass(frozen=True, slots=True)
 class NatBatchFilters:
     batch_id: UUID | None = None
+    intake_number: int | None = None
     sender_email: str | None = None
     file_name: str | None = None
     created_at_from: datetime | None = None
@@ -58,6 +60,7 @@ class NatBatchFilters:
 @dataclass(frozen=True, slots=True)
 class NatTaskFilters:
     batch_id: UUID | None = None
+    intake_number: int | None = None
     status: int | None = None
     status_is_null: bool = False
     nat_request_id: int | None = None
@@ -71,6 +74,7 @@ class NatTaskFilters:
 class NatResultProcessingFilters:
     result_processing_id: UUID | None = None
     batch_id: UUID | None = None
+    intake_number: int | None = None
     status: NatResultProcessingStatus | None = None
     created_at_from: datetime | None = None
     created_at_to: datetime | None = None
