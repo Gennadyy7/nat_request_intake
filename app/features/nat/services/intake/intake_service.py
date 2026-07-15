@@ -55,6 +55,7 @@ class IntakeService:
         filename: str | None,
         content: bytes,
         sender_email: EmailStr,
+        enforce_max_date_range: bool,
     ) -> IntakeResponse:
         display_file_name = filename or ''
         intake = await self._create_intake(
@@ -132,6 +133,7 @@ class IntakeService:
                 parsed_row.values,
                 parsed_row.raw_field_count,
                 row_index,
+                enforce_max_date_range=enforce_max_date_range,
             )
             for error in outcome.errors:
                 row_errors.append(

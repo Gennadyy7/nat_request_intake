@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from app.core.config import settings
 from app.features.nat.constants import (
     COLUMN_TO_IP_FIELD,
     IP_COLUMNS,
@@ -16,6 +17,7 @@ from app.features.nat.services.validators.date_validator import (
     DateValidationSuccess,
     validate_date_field,
     validate_date_range,
+    validate_date_range_max_duration,
 )
 from app.features.nat.services.validators.ip_validator import validate_ip_field
 from app.features.nat.services.validators.region_validator import validate_region
@@ -38,6 +40,8 @@ def validate_row(
     row: dict[str, str],
     raw_field_count: int,
     row_index: int,
+    *,
+    enforce_max_date_range: bool,
 ) -> RowValidationOutcome:
     row_number = row_index + 1
     errors: list[RowValidationError] = []
@@ -97,6 +101,20 @@ def validate_row(
                     column=range_error.column,
                 )
             )
+        elif enforce_max_date_range:
+            max_duration_error = validate_date_range_max_duration(
+                date_from.value,
+                date_to.value,
+                max_seconds=settings.NAT_MAX_DATE_RANGE_SECONDS,
+            )
+            if max_duration_error is not None:
+                errors.append(
+                    RowValidationError(
+                        row_number=row_number,
+                        error_code=max_duration_error.error_code,
+                        column=max_duration_error.column,
+                    )
+                )
 
     for column in IP_COLUMNS:
         raw_value = get_row_value(row, column)

@@ -13,6 +13,43 @@ from app.features.nat.constants import (
     ValidationErrorCode,
 )
 
+_SECONDS_PER_DAY = 86_400
+_SECONDS_PER_HOUR = 3_600
+_SECONDS_PER_MINUTE = 60
+
+
+def format_duration_seconds_ru(total_seconds: int) -> str:
+    if total_seconds < 0:
+        raise ValueError('total_seconds must be non-negative')
+
+    days, remainder = divmod(total_seconds, _SECONDS_PER_DAY)
+    hours, remainder = divmod(remainder, _SECONDS_PER_HOUR)
+    minutes, seconds = divmod(remainder, _SECONDS_PER_MINUTE)
+
+    parts: list[str] = []
+    if days:
+        parts.append(f'{days} {_ru_plural(days, "день", "дня", "дней")}')
+    if hours:
+        parts.append(f'{hours} {_ru_plural(hours, "час", "часа", "часов")}')
+    if minutes:
+        parts.append(f'{minutes} {_ru_plural(minutes, "минута", "минуты", "минут")}')
+    if seconds or not parts:
+        parts.append(f'{seconds} {_ru_plural(seconds, "секунда", "секунды", "секунд")}')
+    return ' '.join(parts)
+
+
+def _ru_plural(value: int, one: str, few: str, many: str) -> str:
+    mod100 = abs(value) % 100
+    mod10 = mod100 % 10
+    if 11 <= mod100 <= 14:
+        return many
+    if mod10 == 1:
+        return one
+    if 2 <= mod10 <= 4:
+        return few
+    return many
+
+
 MESSAGES: dict[str, str] = {
     # ValidationErrorCode
     ValidationErrorCode.MISSING_FILENAME: 'Имя файла не указано',
@@ -33,6 +70,11 @@ MESSAGES: dict[str, str] = {
     ),
     ValidationErrorCode.INVALID_DATE_RANGE: (
         'Дата окончания не может быть раньше даты начала'
+    ),
+    ValidationErrorCode.DATE_RANGE_LIMIT_EXCEEDED: (
+        'Превышена максимально допустимая длительность интервала между датой '
+        'начала и датой окончания '
+        f'(не более {format_duration_seconds_ru(settings.NAT_MAX_DATE_RANGE_SECONDS)})'
     ),
     ValidationErrorCode.INVALID_IP_FORMAT: 'Некорректный формат IP-адреса',
     ValidationErrorCode.CIDR_NOT_ALLOWED: (

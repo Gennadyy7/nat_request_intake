@@ -76,3 +76,18 @@ def validate_date_range(
             column=InputColumnName.DATE_TO,
         )
     return None
+
+
+def validate_date_range_max_duration(
+    date_from: datetime,
+    date_to: datetime,
+    *,
+    max_seconds: int,
+) -> DateValidationFailure | None:
+    duration_seconds = (date_to - date_from).total_seconds()
+    if duration_seconds > max_seconds:
+        return DateValidationFailure(
+            error_code=ValidationErrorCode.DATE_RANGE_LIMIT_EXCEEDED,
+            column=InputColumnName.DATE_TO,
+        )
+    return None

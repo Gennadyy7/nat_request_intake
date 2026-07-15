@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi_keycloak_middleware import get_user
 from pydantic import EmailStr
 
+from app.core.config import settings
 from app.features.auth.dependencies import (
     get_b2b_sender_email,
     get_sender_email,
@@ -96,6 +97,7 @@ async def intake_file(
         filename=file.filename,
         content=content,
         sender_email=sender_email,
+        enforce_max_date_range=settings.NAT_WEB_INTAKE_ENFORCE_MAX_DATE_RANGE,
     )
 
 
@@ -124,6 +126,7 @@ async def intake_file_internal(
         filename=file.filename,
         content=content,
         sender_email=sender_email,
+        enforce_max_date_range=True,
     )
 
 

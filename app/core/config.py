@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     API_PAGINATION_MAX_LIMIT: int = Field(ge=1)
 
     NAT_MAX_BATCH_ROWS: int = Field(ge=1)
+    NAT_MAX_DATE_RANGE_SECONDS: int = Field(ge=1)
+    NAT_WEB_INTAKE_ENFORCE_MAX_DATE_RANGE: bool
     NAT_IDEMPOTENCY_WINDOW_MINUTES: int = Field(ge=1)
     NAT_TASK_DISPLAY_DATETIME_FORMAT: str
     NAT_INPUT_FIELD_SEPARATOR: str
