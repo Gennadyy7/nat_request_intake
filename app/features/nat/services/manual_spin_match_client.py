@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 from uuid import UUID
 
 import httpx
@@ -90,7 +88,7 @@ class MatchSpinClient:
             await self._client.aclose()
         await self._token_provider.aclose()
 
-    async def __aenter__(self) -> MatchSpinClient:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(

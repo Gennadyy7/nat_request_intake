@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import httpx
 
 from app.core.client_credentials import (

@@ -1,7 +1,5 @@
-from __future__ import annotations
-
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 import httpx
 from pydantic import BaseModel, Field, ValidationError
@@ -56,7 +54,7 @@ class ClientCredentialsTokenProvider:
         if self._owns_client:
             await self._client.aclose()
 
-    async def __aenter__(self) -> ClientCredentialsTokenProvider:
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(
