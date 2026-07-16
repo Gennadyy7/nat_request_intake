@@ -39,7 +39,10 @@ def get_file_storage_service() -> FileStorageService:
 
 
 def get_manual_spin_file_storage_service() -> FileStorageService:
-    return FileStorageService(base_dir=settings.SPIN_AGGREGATED_BASE_DIR)
+    return FileStorageService(
+        base_dir=settings.SPIN_AGGREGATED_BASE_DIR,
+        use_date_subdirectory=False,
+    )
 
 
 async def get_match_spin_client() -> AsyncIterator[MatchSpinClient]:
