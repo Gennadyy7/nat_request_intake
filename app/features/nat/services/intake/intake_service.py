@@ -6,7 +6,12 @@ from pydantic import EmailStr
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
-from app.features.nat.constants import IntakeStatus, RowErrorCode, ValidationErrorCode
+from app.features.nat.constants import (
+    IntakeSource,
+    IntakeStatus,
+    RowErrorCode,
+    ValidationErrorCode,
+)
 from app.features.nat.domain.transformed_row import TransformedRow
 from app.features.nat.domain.validated_row import ValidatedRow
 from app.features.nat.messages import get_message
@@ -332,6 +337,7 @@ class IntakeService:
             sender_email=str(sender_email),
             file_name=file_name,
             status=IntakeStatus.REJECTED.value,
+            source=IntakeSource.NAT.value,
             error_code=None,
         )
         await self._uow.nat_intakes.create(intake)

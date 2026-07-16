@@ -13,6 +13,7 @@ from app.features.nat.schemas.pagination import PaginatedResponse
 from app.features.nat.schemas.result_processing import (
     NatResultProcessingDetail,
     NatResultProcessingListItem,
+    NatResultProcessingOutputFile,
 )
 
 
@@ -108,6 +109,8 @@ class ResultProcessingQueryService:
         task = record.task
         return NatResultProcessingDetail(
             **self._to_list_item(record).model_dump(),
-            aggregated_file_path=task.aggregated_file_path,
-            spin_matched_file_path=task.spin_matched_file_path,
+            output_files=[
+                NatResultProcessingOutputFile.model_validate(output_file)
+                for output_file in task.output_files
+            ],
         )

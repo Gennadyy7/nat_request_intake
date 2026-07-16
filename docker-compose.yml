@@ -80,6 +80,7 @@ services:
       - ./.env
     volumes:
       - nat_uploads:/app/backend/uploads/nat
+      - ${SPIN_AGGREGATED_HOST_DIR}:/app/data/aggregated
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 5s

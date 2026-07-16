@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     KEYCLOAK_CLIENT_ID: str
     KEYCLOAK_CLIENT_SECRET: str | None
 
+    NAT_BATCH_NOTIFY_WORKER_KEYCLOAK_CLIENT_ID: str
+    NAT_BATCH_NOTIFY_WORKER_KEYCLOAK_CLIENT_SECRET: str
+    BATCH_MATCH_SPIN_URL: str
+    BATCH_NOTIFY_HTTP_TIMEOUT_SECONDS: int = Field(ge=1)
+
     KEYCLOAK_SWAGGER_CLIENT_ID: str
     KEYCLOAK_SWAGGER_BASE_URL: str
 
@@ -62,6 +67,7 @@ class Settings(BaseSettings):
     NAT_INPUT_FIELD_SEPARATOR: str
     NAT_MISSING_FIELD_PLACEHOLDER: str
     NAT_UPLOAD_BASE_DIR: str = 'backend/uploads/nat'
+    SPIN_AGGREGATED_BASE_DIR: str = '/app/data/aggregated'
     nat_upload_date_timezone_env: str = Field(
         validation_alias='NAT_UPLOAD_DATE_TIMEZONE',
     )

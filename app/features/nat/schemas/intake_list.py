@@ -5,6 +5,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from app.features.nat.constants import (
     InputColumnName,
+    IntakeSource,
     IntakeStatus,
     RowErrorCode,
     ValidationErrorCode,
@@ -18,6 +19,7 @@ class NatIntakeListItem(BaseModel):
     sender_email: EmailStr
     file_name: str
     status: IntakeStatus
+    source: IntakeSource
     code: ValidationErrorCode | None = None
     message: str | None = None
     batch_id: UUID | None = None
@@ -31,6 +33,7 @@ class NatIntakeDetail(BaseModel):
     sender_email: EmailStr
     file_name: str
     status: IntakeStatus
+    source: IntakeSource
     code: ValidationErrorCode | None = None
     message: str | None = None
     batch_id: UUID | None = None

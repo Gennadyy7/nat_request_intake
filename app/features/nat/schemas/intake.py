@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr, Field
 
 from app.features.nat.constants import (
     InputColumnName,
+    IntakeSource,
     IntakeStatus,
     RowErrorCode,
     ValidationErrorCode,
@@ -22,6 +23,7 @@ class IntakeResponse(BaseModel):
     number: int = Field(ge=1)
     batch_id: UUID | None = None
     status: IntakeStatus
+    source: IntakeSource = IntakeSource.NAT
     file_name: str
     sender_email: EmailStr
     total_data_rows: int = Field(ge=0)

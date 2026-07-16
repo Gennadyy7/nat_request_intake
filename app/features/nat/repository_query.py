@@ -39,6 +39,8 @@ def build_intake_filter_clauses(
         clauses.append(NatIntake.created_at <= filters.created_at_to)
     if filters.status is not None:
         clauses.append(NatIntake.status == filters.status.value)
+    if filters.source is not None:
+        clauses.append(NatIntake.source == filters.source.value)
     if filters.intake_id is not None:
         clauses.append(NatIntake.id == filters.intake_id)
     if filters.intake_number is not None:

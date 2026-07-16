@@ -19,6 +19,11 @@ class NatResultProcessingListItem(BaseModel):
     completed_at: datetime | None = None
 
 
+class NatResultProcessingOutputFile(BaseModel):
+    index: int = Field(ge=1)
+    aggregated_path: str
+    spin_matched_path: str | None = None
+
+
 class NatResultProcessingDetail(NatResultProcessingListItem):
-    aggregated_file_path: str | None = None
-    spin_matched_file_path: str | None = None
+    output_files: list[NatResultProcessingOutputFile]

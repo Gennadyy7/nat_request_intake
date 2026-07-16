@@ -1,19 +1,20 @@
 """init schema
 
-Revision ID: d65e043470aa
+Revision ID: 847c420bbcd2
 Revises:
-Create Date: 2026-07-15 14:42:07.249665
+Create Date: 2026-07-16 11:18:57.697785
 
 """
 
 from collections.abc import Sequence
 
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'd65e043470aa'
+revision: str = '847c420bbcd2'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -170,6 +171,13 @@ def upgrade() -> None:
             comment='Intake processing status (accepted, partially_accepted, rejected)',
         ),
         sa.Column(
+            'source',
+            sa.String(length=32),
+            server_default='nat',
+            nullable=False,
+            comment='Intake source (nat or manual_spin)',
+        ),
+        sa.Column(
             'error_code',
             sa.String(length=64),
             nullable=True,
@@ -199,6 +207,9 @@ def upgrade() -> None:
         'nat_intakes',
         ['sender_email'],
         unique=False,
+    )
+    op.create_index(
+        op.f('ix_nat_intakes_source'), 'nat_intakes', ['source'], unique=False
     )
     op.create_index(
         op.f('ix_nat_intakes_status'), 'nat_intakes', ['status'], unique=False
@@ -479,16 +490,11 @@ def upgrade() -> None:
             comment='Timestamp when result processing finished',
         ),
         sa.Column(
-            'aggregated_file_path',
-            sa.String(length=2048),
-            nullable=True,
-            comment='Path to the aggregated NAT results file',
-        ),
-        sa.Column(
-            'spin_matched_file_path',
-            sa.String(length=2048),
-            nullable=True,
-            comment='Path to the final file after SPIN3 matching',
+            'output_files',
+            postgresql.JSONB(astext_type=sa.Text()),
+            server_default=sa.text("'[]'::jsonb"),
+            nullable=False,
+            comment='Result files: [{index, aggregated_path, spin_matched_path}, ...]. Contains one item without split and one item per part after split',
         ),
         sa.Column(
             'total_lines',
@@ -750,6 +756,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_email_messages_id'), table_name='email_messages')
     op.drop_table('email_messages')
     op.drop_index(op.f('ix_nat_intakes_status'), table_name='nat_intakes')
+    op.drop_index(op.f('ix_nat_intakes_source'), table_name='nat_intakes')
     op.drop_index(op.f('ix_nat_intakes_sender_email'), table_name='nat_intakes')
     op.drop_index(op.f('ix_nat_intakes_number'), table_name='nat_intakes')
     op.drop_index(op.f('ix_nat_intakes_id'), table_name='nat_intakes')

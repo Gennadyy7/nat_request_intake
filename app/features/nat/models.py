@@ -16,10 +16,11 @@ from sqlalchemy import (
     func,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
-from app.features.nat.constants import NON_TERMINAL_NAT_STATUSES
+from app.features.nat.constants import NON_TERMINAL_NAT_STATUSES, IntakeSource
 
 
 class NatIntake(Base, TimestampMixin):
@@ -59,6 +60,15 @@ class NatIntake(Base, TimestampMixin):
         nullable=False,
         index=True,
         comment='Intake processing status (accepted, partially_accepted, rejected)',
+    )
+
+    source: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=IntakeSource.NAT.value,
+        server_default=IntakeSource.NAT.value,
+        index=True,
+        comment='Intake source (nat or manual_spin)',
     )
 
     error_code: Mapped[str | None] = mapped_column(
@@ -457,16 +467,15 @@ class NatResultProcessingTask(Base):
         comment='Timestamp when result processing finished',
     )
 
-    aggregated_file_path: Mapped[str | None] = mapped_column(
-        String(2048),
-        nullable=True,
-        comment='Path to the aggregated NAT results file',
-    )
-
-    spin_matched_file_path: Mapped[str | None] = mapped_column(
-        String(2048),
-        nullable=True,
-        comment='Path to the final file after SPIN3 matching',
+    output_files: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=list,
+        server_default=text("'[]'::jsonb"),
+        comment=(
+            'Result files: [{index, aggregated_path, spin_matched_path}, ...]. '
+            'Contains one item without split and one item per part after split'
+        ),
     )
 
     total_lines: Mapped[int] = mapped_column(

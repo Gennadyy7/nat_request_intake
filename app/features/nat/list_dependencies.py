@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import HTTPException, Query, status
 
-from app.features.nat.constants import ApiErrorCode, IntakeStatus
+from app.features.nat.constants import ApiErrorCode, IntakeSource, IntakeStatus
 from app.features.nat.messages import get_message
 from app.features.nat.pagination import (
     PaginationParams,
@@ -98,6 +98,7 @@ def get_nat_intake_filters(
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
     filter_created_at_to: Annotated[datetime | None, Query()] = None,
     filter_status: Annotated[str | None, Query()] = None,
+    filter_source: Annotated[str | None, Query()] = None,
     filter_processing_paused: Annotated[bool | None, Query()] = None,
 ) -> NatIntakeFilters:
     status_value: IntakeStatus | None = None
@@ -114,6 +115,20 @@ def get_nat_intake_filters(
                     'allowed': [member.value for member in IntakeStatus],
                 },
             ) from exc
+    source_value: IntakeSource | None = None
+    if filter_source is not None:
+        try:
+            source_value = IntakeSource(filter_source)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={
+                    'code': ApiErrorCode.INVALID_FILTER_SOURCE,
+                    'message': get_message(ApiErrorCode.INVALID_FILTER_SOURCE),
+                    'filter_source': filter_source,
+                    'allowed': [member.value for member in IntakeSource],
+                },
+            ) from exc
     return NatIntakeFilters(
         intake_id=filter_intake_id,
         intake_number=filter_intake_number,
@@ -122,6 +137,7 @@ def get_nat_intake_filters(
         created_at_from=filter_created_at_from,
         created_at_to=filter_created_at_to,
         status=status_value,
+        source=source_value,
         processing_paused=filter_processing_paused,
     )
 
@@ -134,6 +150,7 @@ def get_nat_intake_monitoring_filters(
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
     filter_created_at_to: Annotated[datetime | None, Query()] = None,
     filter_status: Annotated[str | None, Query()] = None,
+    filter_source: Annotated[str | None, Query()] = None,
     filter_processing_paused: Annotated[bool | None, Query()] = None,
     filter_result_processing_status: Annotated[str | None, Query()] = None,
 ) -> NatIntakeMonitoringFilters:
@@ -145,6 +162,7 @@ def get_nat_intake_monitoring_filters(
         filter_created_at_from=filter_created_at_from,
         filter_created_at_to=filter_created_at_to,
         filter_status=filter_status,
+        filter_source=filter_source,
         filter_processing_paused=filter_processing_paused,
     )
     result_processing_filter = parse_result_processing_status_filter(
@@ -158,6 +176,7 @@ def get_nat_intake_monitoring_filters(
         created_at_from=base_filters.created_at_from,
         created_at_to=base_filters.created_at_to,
         status=base_filters.status,
+        source=base_filters.source,
         processing_paused=base_filters.processing_paused,
         result_processing_status=result_processing_filter.eq_value,
         result_processing_status_is_null=result_processing_filter.is_null,

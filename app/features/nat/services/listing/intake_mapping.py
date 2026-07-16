@@ -1,4 +1,4 @@
-from app.features.nat.constants import IntakeStatus, ValidationErrorCode
+from app.features.nat.constants import IntakeSource, IntakeStatus, ValidationErrorCode
 from app.features.nat.messages import get_message
 from app.features.nat.repository_records import NatIntakeListRecord
 from app.features.nat.schemas.intake_list import NatIntakeDetail, NatIntakeListItem
@@ -13,6 +13,7 @@ def to_intake_list_item(record: NatIntakeListRecord) -> NatIntakeListItem:
         sender_email=intake.sender_email,
         file_name=intake.file_name,
         status=IntakeStatus(intake.status),
+        source=IntakeSource(intake.source),
         code=error_code,
         message=get_message(error_code) if error_code is not None else None,
         batch_id=record.batch_id,

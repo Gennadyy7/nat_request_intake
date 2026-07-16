@@ -56,6 +56,9 @@ MESSAGES: dict[str, str] = {
     ValidationErrorCode.INVALID_FILE_FORMAT: (
         'Неподдерживаемый формат файла. Допустимые форматы: CSV, TXT, XLSX'
     ),
+    ValidationErrorCode.MANUAL_SPIN_CSV_REQUIRED: (
+        'Неподдерживаемый формат файла. Для ручного сопоставления SPIN допустим CSV'
+    ),
     ValidationErrorCode.EMPTY_FILE: 'Файл не содержит данных',
     ValidationErrorCode.TOO_MANY_ROWS: (
         'Превышено максимально допустимое число строк в файле'
@@ -109,6 +112,7 @@ MESSAGES: dict[str, str] = {
         'Задача пост-обработки пакета не найдена'
     ),
     ApiErrorCode.INVALID_FILTER_STATUS: 'Недопустимое значение фильтра статуса',
+    ApiErrorCode.INVALID_FILTER_SOURCE: 'Недопустимое значение фильтра источника',
     ApiErrorCode.INVALID_FILTER_TASK_STATUS: (
         'Недопустимое значение фильтра статуса задачи. Допустимо: целое число или null'
     ),
@@ -127,6 +131,10 @@ MESSAGES: dict[str, str] = {
         'Заявку нельзя приостановить: отсутствует принятый пакет обработки'
     ),
     ApiErrorCode.BATCH_ALREADY_NOTIFIED: ('Обработка уже передана внешнему сервису'),
+    ApiErrorCode.MANUAL_SPIN_MATCH_FAILED: (
+        'Сервис SPIN отклонил запуск ручного сопоставления'
+    ),
+    ApiErrorCode.MANUAL_SPIN_MATCH_UNAVAILABLE: ('Сервис SPIN временно недоступен'),
 }
 
 

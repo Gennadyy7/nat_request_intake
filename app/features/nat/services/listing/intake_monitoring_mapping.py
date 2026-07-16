@@ -1,5 +1,6 @@
 from app.features.email.constants import EmailReplyStatus
 from app.features.nat.constants import (
+    IntakeSource,
     IntakeStatus,
     NatResultProcessingStatus,
     ValidationErrorCode,
@@ -44,6 +45,8 @@ def _to_list_record(record: NatIntakeMonitoringListRecord) -> NatIntakeListRecor
 def _build_row_stats(
     record: NatIntakeMonitoringListRecord,
 ) -> IntakeFileRowStats | None:
+    if record.intake.source == IntakeSource.MANUAL_SPIN.value:
+        return None
     if record.batch_id is not None:
         assert record.batch_row_count is not None
         total = record.batch_row_count
@@ -77,6 +80,8 @@ def _build_row_stats(
 def _build_task_stats(
     record: NatIntakeMonitoringListRecord,
 ) -> IntakeNatTaskStats | None:
+    if record.intake.source == IntakeSource.MANUAL_SPIN.value:
+        return None
     if record.tasks_total is None:
         return None
 

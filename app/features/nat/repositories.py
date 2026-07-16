@@ -11,7 +11,11 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.repositories.sqlalchemy import SQLAlchemyRepository
 from app.features.email.models import EmailMessage
-from app.features.nat.constants import NON_TERMINAL_NAT_STATUSES, NatTaskStatus
+from app.features.nat.constants import (
+    NON_TERMINAL_NAT_STATUSES,
+    IntakeSource,
+    NatTaskStatus,
+)
 from app.features.nat.domain.deduplication_key import DeduplicationKey
 from app.features.nat.domain.transformed_row import TransformedRow
 from app.features.nat.models import (
@@ -477,9 +481,11 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
         )
         statement = (
             select(NatBatch)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
             .where(
                 NatBatch.notified_at.is_(None),
                 NatBatch.processing_paused.is_(False),
+                NatIntake.source == IntakeSource.NAT.value,
                 has_completed,
                 ~has_non_terminal,
             )
@@ -638,10 +644,12 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
         statement = (
             select(NatTask)
             .join(NatBatch, NatTask.batch_id == NatBatch.id)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
             .where(
                 NatTask.status.is_(None),
                 NatTask.error_message.is_(None),
                 NatBatch.processing_paused.is_(False),
+                NatIntake.source == IntakeSource.NAT.value,
             )
             .order_by(NatTask.created_at.asc())
             .with_for_update(skip_locked=True)
@@ -654,7 +662,12 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
     async def claim_for_poll(self, limit: int | None) -> Sequence[NatTask]:
         statement = (
             select(NatTask)
-            .where(NatTask.status.in_(NON_TERMINAL_NAT_STATUSES))
+            .join(NatBatch, NatTask.batch_id == NatBatch.id)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
+            .where(
+                NatTask.status.in_(NON_TERMINAL_NAT_STATUSES),
+                NatIntake.source == IntakeSource.NAT.value,
+            )
             .order_by(NatTask.created_at.asc())
             .with_for_update(skip_locked=True)
         )

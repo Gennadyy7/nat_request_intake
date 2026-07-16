@@ -14,11 +14,14 @@ DEFAULT_DOWNLOAD_MEDIA_TYPE = 'application/octet-stream'
 
 
 class FileStorageService:
+    def __init__(self, base_dir: str | None = None) -> None:
+        self._base_dir = base_dir or settings.NAT_UPLOAD_BASE_DIR
+
     def build_storage_path(self, *, original_filename: str, batch_id: UUID) -> str:
         path = PurePath(original_filename)
         stored_name = f'{path.stem}_{batch_id}{path.suffix}'
         date_dir = self._upload_date_dir_name()
-        return str(PurePath(settings.NAT_UPLOAD_BASE_DIR) / date_dir / stored_name)
+        return str(PurePath(self._base_dir) / date_dir / stored_name)
 
     def _upload_date_dir_name(self, *, at: datetime | None = None) -> str:
         moment = (
@@ -54,7 +57,7 @@ class FileStorageService:
         return MEDIA_TYPE_BY_EXTENSION[extension]
 
     def resolve_safe_path(self, storage_path: str) -> Path | None:
-        base_dir = Path(settings.NAT_UPLOAD_BASE_DIR).resolve()
+        base_dir = Path(self._base_dir).resolve()
         candidate = Path(storage_path).resolve()
         if not candidate.is_relative_to(base_dir):
             return None
