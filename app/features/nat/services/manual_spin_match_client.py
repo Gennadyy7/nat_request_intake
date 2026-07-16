@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Self
+from types import TracebackType
+from typing import Self
 from uuid import UUID
 
 import httpx
@@ -11,9 +12,6 @@ from app.core.client_credentials import (
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.features.nat.schemas.manual_spin import MatchSpinRequest
-
-if TYPE_CHECKING:
-    from types import TracebackType
 
 logger = get_logger(__name__)
 

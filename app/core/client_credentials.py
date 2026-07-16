@@ -1,13 +1,11 @@
 import time
-from typing import TYPE_CHECKING, Self
+from types import TracebackType
+from typing import Self
 
 import httpx
 from pydantic import BaseModel, Field, ValidationError
 
 from app.core.logging import get_logger
-
-if TYPE_CHECKING:
-    from types import TracebackType
 
 logger = get_logger(__name__)
 
