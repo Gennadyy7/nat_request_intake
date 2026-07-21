@@ -14,6 +14,7 @@ from email_poller.app.core.nat_client import NatIntakeClient
 from email_poller.app.features.email_monitor.services.poller import EmailPollService
 from email_poller.app.features.email_reply.service import EmailReplyService
 
+setup_logging()
 logger = get_logger(__name__)
 
 
@@ -79,7 +80,6 @@ async def health_check() -> dict[str, str]:
 
 
 def main() -> None:
-    setup_logging()
     logger.info('Starting email poller on {}:{}', settings.APP_HOST, settings.APP_PORT)
     uvicorn.run(
         'email_poller.app.main:app',

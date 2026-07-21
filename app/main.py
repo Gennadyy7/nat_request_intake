@@ -19,6 +19,7 @@ from app.core.database import db_manager
 from app.core.keycloak import get_keycloak_config, map_user
 from app.core.logging import get_logger, setup_logging
 
+setup_logging()
 logger = get_logger(__name__)
 
 
@@ -113,7 +114,6 @@ async def health_check() -> dict[str, str]:
 
 
 def main() -> None:
-    setup_logging()
     logger.info(f'Starting server on {settings.APP_HOST}:{settings.APP_PORT}')
     uvicorn.run(
         'app.main:app',

@@ -17,6 +17,7 @@ from nat_batch_notify_worker.app.features.batch_notify.services.worker import (
     NatBatchNotifyWorkerService,
 )
 
+setup_logging()
 logger = get_logger(__name__)
 
 
@@ -81,7 +82,6 @@ async def health_check() -> dict[str, str]:
 
 
 def main() -> None:
-    setup_logging()
     logger.info(
         'Starting NAT batch notify worker on {}:{}',
         settings.APP_HOST,

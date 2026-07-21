@@ -16,6 +16,7 @@ from nat_task_status_worker.app.features.task_status.services.worker import (
     NatTaskStatusWorkerService,
 )
 
+setup_logging()
 logger = get_logger(__name__)
 
 
@@ -78,7 +79,6 @@ async def health_check() -> dict[str, str]:
 
 
 def main() -> None:
-    setup_logging()
     logger.info(
         'Starting NAT task status worker on {}:{}',
         settings.APP_HOST,
