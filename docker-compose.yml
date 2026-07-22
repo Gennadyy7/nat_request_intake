@@ -79,7 +79,9 @@ services:
     env_file:
       - ./.env
     volumes:
+      # Must match NAT_UPLOAD_BASE_DIR.
       - nat_uploads:/app/backend/uploads/nat
+      # Must match SPIN_AGGREGATED_BASE_DIR.
       - ${SPIN_AGGREGATED_HOST_DIR}:/app/data/aggregated
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]

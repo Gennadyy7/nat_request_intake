@@ -66,8 +66,8 @@ class Settings(BaseSettings):
     NAT_TASK_DISPLAY_DATETIME_FORMAT: str
     NAT_INPUT_FIELD_SEPARATOR: str
     NAT_MISSING_FIELD_PLACEHOLDER: str
-    NAT_UPLOAD_BASE_DIR: str = 'backend/uploads/nat'
-    SPIN_AGGREGATED_BASE_DIR: str = '/app/data/aggregated'
+    NAT_UPLOAD_BASE_DIR: str
+    SPIN_AGGREGATED_BASE_DIR: str
     nat_upload_date_timezone_env: str = Field(
         validation_alias='NAT_UPLOAD_DATE_TIMEZONE',
     )
@@ -122,6 +122,21 @@ class Settings(BaseSettings):
                 f'Invalid NAT_UPLOAD_DATE_TIMEZONE value {value!r}. '
                 'Use UTC or a valid IANA timezone name (e.g. Europe/Minsk).'
             ) from exc
+        return value
+
+    @field_validator('NAT_UPLOAD_BASE_DIR', 'SPIN_AGGREGATED_BASE_DIR', mode='before')
+    @classmethod
+    def validate_absolute_base_dir(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise ValueError('Base directory path must be a string')
+        if not value:
+            raise ValueError('Base directory path must not be empty')
+        if value != value.strip():
+            raise ValueError(
+                'Base directory path must not contain leading or trailing whitespace'
+            )
+        if not value.startswith('/'):
+            raise ValueError('Base directory path must be an absolute path')
         return value
 
     @field_validator('APP_ROOT_PATH', mode='before')
