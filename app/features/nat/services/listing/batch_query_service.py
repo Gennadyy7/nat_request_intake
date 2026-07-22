@@ -106,7 +106,6 @@ class BatchQueryService:
             intake_id=batch.intake_id,
             intake_number=record.intake_number,
             file_name=record.original_file_name,
-            stored_file_path=batch.file_name,
             row_count=batch.row_count,
             tasks_count=record.tasks_count,
             sender_email=record.sender_email,

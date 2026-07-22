@@ -111,6 +111,12 @@ MESSAGES: dict[str, str] = {
     ApiErrorCode.RESULT_PROCESSING_NOT_FOUND: (
         'Задача пост-обработки пакета не найдена'
     ),
+    ApiErrorCode.RESULT_PROCESSING_NOT_READY: (
+        'Пост-обработка пакета ещё не завершена'
+    ),
+    ApiErrorCode.RESULT_PROCESSING_FILE_NOT_FOUND: (
+        'Файл результата пост-обработки не найден'
+    ),
     ApiErrorCode.INVALID_FILTER_STATUS: 'Недопустимое значение фильтра статуса',
     ApiErrorCode.INVALID_FILTER_SOURCE: 'Недопустимое значение фильтра источника',
     ApiErrorCode.INVALID_FILTER_TASK_STATUS: (

@@ -148,8 +148,12 @@ def get_task_query_service(
 
 def get_result_processing_query_service(
     uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
+    file_storage: Annotated[
+        FileStorageService,
+        Depends(get_manual_spin_file_storage_service),
+    ],
 ) -> ResultProcessingQueryService:
-    return ResultProcessingQueryService(uow=uow)
+    return ResultProcessingQueryService(uow=uow, file_storage=file_storage)
 
 
 def get_intake_processing_service(
