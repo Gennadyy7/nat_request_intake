@@ -108,6 +108,18 @@ class NatResultProcessingStatus(StrEnum):
     FAILED = 'failed'
 
 
+class NatAggregationQueueStatus(StrEnum):
+    PENDING = 'pending'
+    PROCESSING = 'processing'
+    COMPLETED = 'completed'
+    FAILED = 'failed'
+
+
+class NatAggregationQueueProcessingType(StrEnum):
+    AGGREGATION = 'aggregation'
+    SPIN_MATCH = 'spin_match'
+
+
 class ResultProcessingGetStatus(StrEnum):
     OK = 'ok'
     BATCH_NOT_FOUND = 'batch_not_found'

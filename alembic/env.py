@@ -18,6 +18,7 @@ from app.features.email.models import (  # noqa: F401
     EmailSender,
 )
 from app.features.nat.models import (  # noqa: F401
+    NatAggregationQueueEntry,
     NatBatch,
     NatDedupKey,
     NatIntake,

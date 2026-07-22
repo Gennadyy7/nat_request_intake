@@ -20,7 +20,12 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base, TimestampMixin
-from app.features.nat.constants import NON_TERMINAL_NAT_STATUSES, IntakeSource
+from app.features.nat.constants import (
+    NON_TERMINAL_NAT_STATUSES,
+    IntakeSource,
+    NatAggregationQueueProcessingType,
+    NatAggregationQueueStatus,
+)
 
 
 class NatIntake(Base, TimestampMixin):
@@ -523,6 +528,112 @@ class NatResultProcessingTask(Base):
             f'id={self.id}, '
             f'nat_batch_id={self.nat_batch_id}, '
             f'status={self.status})'
+        )
+
+
+class NatAggregationQueueEntry(Base, TimestampMixin):
+    __tablename__ = 'aggregation_queue'
+
+    id: Mapped[UUID] = mapped_column(
+        primary_key=True,
+        default=uuid4,
+        comment='Primary key (UUID v4, generated automatically)',
+    )
+
+    nat_batch_id: Mapped[UUID] = mapped_column(
+        ForeignKey(
+            'nat_batches.id',
+            name='fk_aggregation_queue_nat_batch_id_nat_batches',
+            ondelete='CASCADE',
+        ),
+        nullable=False,
+        unique=True,
+        index=True,
+        comment='Foreign key to parent NatBatch',
+    )
+
+    processing_type: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=NatAggregationQueueProcessingType.AGGREGATION.value,
+        server_default=NatAggregationQueueProcessingType.AGGREGATION.value,
+        comment='Queue processing type (aggregation or spin_match)',
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(32),
+        nullable=False,
+        default=NatAggregationQueueStatus.PENDING.value,
+        server_default=NatAggregationQueueStatus.PENDING.value,
+        comment='Queue entry status (pending, processing, completed, failed)',
+    )
+
+    attempt_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default=text('0'),
+        comment='Number of processing attempts for this queue entry',
+    )
+
+    next_attempt_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment='Earliest timestamp when the entry may be claimed again',
+    )
+
+    locked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment='Timestamp when a worker claimed the entry',
+    )
+
+    heartbeat_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment='Last heartbeat timestamp from the worker holding the lease',
+    )
+
+    worker_id: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        comment='Identifier of the worker currently holding the lease',
+    )
+
+    error_message: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment='Last error description for retry or failed status',
+    )
+
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment='Timestamp when queue processing finished',
+    )
+
+    __table_args__ = (
+        Index(
+            'ix_aggregation_queue_pending',
+            'next_attempt_at',
+            'created_at',
+            postgresql_where=text("status = 'pending'"),
+        ),
+        {
+            'comment': (
+                'Durable aggregation queue schema owned by intake; '
+                'runtime processing belongs to nat_result_aggregator'
+            ),
+        },
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f'NatAggregationQueueEntry('
+            f'id={self.id}, '
+            f'nat_batch_id={self.nat_batch_id}, '
+            f'status={self.status}, '
+            f'processing_type={self.processing_type})'
         )
 
 

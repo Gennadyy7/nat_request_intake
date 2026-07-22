@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: 847c420bbcd2
+Revision ID: 8472c51f95b0
 Revises:
-Create Date: 2026-07-16 11:18:57.697785
+Create Date: 2026-07-22 14:06:03.719623
 
 """
 
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '847c420bbcd2'
+revision: str = '8472c51f95b0'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -456,6 +456,111 @@ def upgrade() -> None:
         unique=False,
     )
     op.create_table(
+        'aggregation_queue',
+        sa.Column(
+            'id',
+            sa.Uuid(),
+            nullable=False,
+            comment='Primary key (UUID v4, generated automatically)',
+        ),
+        sa.Column(
+            'nat_batch_id',
+            sa.Uuid(),
+            nullable=False,
+            comment='Foreign key to parent NatBatch',
+        ),
+        sa.Column(
+            'processing_type',
+            sa.String(length=32),
+            server_default='aggregation',
+            nullable=False,
+            comment='Queue processing type (aggregation or spin_match)',
+        ),
+        sa.Column(
+            'status',
+            sa.String(length=32),
+            server_default='pending',
+            nullable=False,
+            comment='Queue entry status (pending, processing, completed, failed)',
+        ),
+        sa.Column(
+            'attempt_count',
+            sa.Integer(),
+            server_default=sa.text('0'),
+            nullable=False,
+            comment='Number of processing attempts for this queue entry',
+        ),
+        sa.Column(
+            'next_attempt_at',
+            sa.DateTime(timezone=True),
+            nullable=True,
+            comment='Earliest timestamp when the entry may be claimed again',
+        ),
+        sa.Column(
+            'locked_at',
+            sa.DateTime(timezone=True),
+            nullable=True,
+            comment='Timestamp when a worker claimed the entry',
+        ),
+        sa.Column(
+            'heartbeat_at',
+            sa.DateTime(timezone=True),
+            nullable=True,
+            comment='Last heartbeat timestamp from the worker holding the lease',
+        ),
+        sa.Column(
+            'worker_id',
+            sa.String(length=255),
+            nullable=True,
+            comment='Identifier of the worker currently holding the lease',
+        ),
+        sa.Column(
+            'error_message',
+            sa.Text(),
+            nullable=True,
+            comment='Last error description for retry or failed status',
+        ),
+        sa.Column(
+            'completed_at',
+            sa.DateTime(timezone=True),
+            nullable=True,
+            comment='Timestamp when queue processing finished',
+        ),
+        sa.Column(
+            'created_at',
+            sa.DateTime(timezone=True),
+            server_default=sa.text('now()'),
+            nullable=False,
+        ),
+        sa.Column(
+            'updated_at',
+            sa.DateTime(timezone=True),
+            server_default=sa.text('now()'),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(
+            ['nat_batch_id'],
+            ['nat_batches.id'],
+            name='fk_aggregation_queue_nat_batch_id_nat_batches',
+            ondelete='CASCADE',
+        ),
+        sa.PrimaryKeyConstraint('id', name=op.f('pk_aggregation_queue')),
+        comment='Durable aggregation queue schema owned by intake; runtime processing belongs to nat_result_aggregator',
+    )
+    op.create_index(
+        op.f('ix_aggregation_queue_nat_batch_id'),
+        'aggregation_queue',
+        ['nat_batch_id'],
+        unique=True,
+    )
+    op.create_index(
+        'ix_aggregation_queue_pending',
+        'aggregation_queue',
+        ['next_attempt_at', 'created_at'],
+        unique=False,
+        postgresql_where=sa.text("status = 'pending'"),
+    )
+    op.create_table(
         'aggregation_tasks',
         sa.Column(
             'id',
@@ -733,6 +838,15 @@ def downgrade() -> None:
     )
     op.drop_index(op.f('ix_aggregation_tasks_id'), table_name='aggregation_tasks')
     op.drop_table('aggregation_tasks')
+    op.drop_index(
+        'ix_aggregation_queue_pending',
+        table_name='aggregation_queue',
+        postgresql_where=sa.text("status = 'pending'"),
+    )
+    op.drop_index(
+        op.f('ix_aggregation_queue_nat_batch_id'), table_name='aggregation_queue'
+    )
+    op.drop_table('aggregation_queue')
     op.drop_index(
         op.f('ix_nat_intake_row_errors_intake_id'), table_name='nat_intake_row_errors'
     )
