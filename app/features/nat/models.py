@@ -241,6 +241,8 @@ class NatBatch(Base, TimestampMixin):
         'NatResultProcessingTask',
         back_populates='batch',
         uselist=False,
+        primaryjoin='NatBatch.id == NatResultProcessingTask.nat_batch_id',
+        foreign_keys='[NatResultProcessingTask.nat_batch_id]',
     )
 
     __table_args__ = (
@@ -438,15 +440,13 @@ class NatResultProcessingTask(Base):
     )
 
     nat_batch_id: Mapped[UUID] = mapped_column(
-        ForeignKey(
-            'nat_batches.id',
-            name='fk_aggregation_tasks_nat_batch_id_nat_batches',
-            ondelete='CASCADE',
-        ),
         nullable=False,
         unique=True,
         index=True,
-        comment='Foreign key to parent NatBatch',
+        comment=(
+            'Logical reference to NatBatch.id (no DB FK; '
+            'aggregator runtime bounded context)'
+        ),
     )
 
     status: Mapped[str] = mapped_column(
@@ -512,12 +512,15 @@ class NatResultProcessingTask(Base):
     batch: Mapped[NatBatch] = relationship(
         'NatBatch',
         back_populates='result_processing_task',
+        primaryjoin='NatResultProcessingTask.nat_batch_id == NatBatch.id',
+        foreign_keys='[NatResultProcessingTask.nat_batch_id]',
     )
 
     __table_args__ = (
         {
             'comment': (
-                'External post-processing task for aggregating NAT results and SPIN3 matching'
+                'External post-processing task for aggregating NAT results '
+                'and SPIN3 matching; nat_batch_id is a logical UUID without DB FK'
             ),
         },
     )
@@ -541,15 +544,13 @@ class NatAggregationQueueEntry(Base, TimestampMixin):
     )
 
     nat_batch_id: Mapped[UUID] = mapped_column(
-        ForeignKey(
-            'nat_batches.id',
-            name='fk_aggregation_queue_nat_batch_id_nat_batches',
-            ondelete='CASCADE',
-        ),
         nullable=False,
         unique=True,
         index=True,
-        comment='Foreign key to parent NatBatch',
+        comment=(
+            'Logical reference to NatBatch.id (no DB FK; '
+            'aggregator runtime bounded context)'
+        ),
     )
 
     processing_type: Mapped[str] = mapped_column(
@@ -622,7 +623,8 @@ class NatAggregationQueueEntry(Base, TimestampMixin):
         {
             'comment': (
                 'Durable aggregation queue schema owned by intake; '
-                'runtime processing belongs to nat_result_aggregator'
+                'runtime processing belongs to nat_result_aggregator; '
+                'nat_batch_id is a logical UUID without DB FK'
             ),
         },
     )
