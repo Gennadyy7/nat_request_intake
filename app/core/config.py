@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     NAT_MAX_BATCH_ROWS: int = Field(ge=1)
     NAT_MAX_DATE_RANGE_SECONDS: int = Field(ge=1)
     NAT_WEB_INTAKE_ENFORCE_MAX_DATE_RANGE: bool
+    NAT_WEB_INTAKE_ENFORCE_PAST_DATE_RANGE: bool
     NAT_IDEMPOTENCY_WINDOW_MINUTES: int = Field(ge=1)
     NAT_TASK_DISPLAY_DATETIME_FORMAT: str
     NAT_INPUT_FIELD_SEPARATOR: str
@@ -70,6 +71,9 @@ class Settings(BaseSettings):
     SPIN_AGGREGATED_BASE_DIR: str
     nat_upload_date_timezone_env: str = Field(
         validation_alias='NAT_UPLOAD_DATE_TIMEZONE',
+    )
+    nat_date_validation_timezone_env: str = Field(
+        validation_alias='NAT_DATE_VALIDATION_TIMEZONE',
     )
     NAT_MAX_EXPANSION_PER_FIELD: int = Field(default=256, ge=1)
     NAT_MAX_TOTAL_EXPANSION_PRODUCT: int = Field(default=256, ge=1)
@@ -120,6 +124,27 @@ class Settings(BaseSettings):
         except ZoneInfoNotFoundError as exc:
             raise ValueError(
                 f'Invalid NAT_UPLOAD_DATE_TIMEZONE value {value!r}. '
+                'Use UTC or a valid IANA timezone name (e.g. Europe/Minsk).'
+            ) from exc
+        return value
+
+    @field_validator('nat_date_validation_timezone_env', mode='before')
+    @classmethod
+    def validate_nat_date_validation_timezone(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise ValueError('NAT_DATE_VALIDATION_TIMEZONE must be a string')
+        if not value:
+            raise ValueError('NAT_DATE_VALIDATION_TIMEZONE must not be empty')
+        if value != value.strip():
+            raise ValueError(
+                'NAT_DATE_VALIDATION_TIMEZONE must not contain leading or trailing '
+                'whitespace'
+            )
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(
+                f'Invalid NAT_DATE_VALIDATION_TIMEZONE value {value!r}. '
                 'Use UTC or a valid IANA timezone name (e.g. Europe/Minsk).'
             ) from exc
         return value
@@ -243,6 +268,10 @@ class Settings(BaseSettings):
     @cached_property
     def NAT_UPLOAD_DATE_TIMEZONE(self) -> ZoneInfo:  # noqa: N802
         return ZoneInfo(self.nat_upload_date_timezone_env)
+
+    @cached_property
+    def NAT_DATE_VALIDATION_TIMEZONE(self) -> ZoneInfo:  # noqa: N802
+        return ZoneInfo(self.nat_date_validation_timezone_env)
 
 
 settings = Settings()  # type: ignore[call-arg]

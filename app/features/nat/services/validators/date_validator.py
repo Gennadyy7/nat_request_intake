@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 
 from dateutil import parser as dateutil_parser
 
@@ -73,6 +73,19 @@ def validate_date_range(
     if date_to < date_from:
         return DateValidationFailure(
             error_code=ValidationErrorCode.INVALID_DATE_RANGE,
+            column=InputColumnName.DATE_TO,
+        )
+    return None
+
+
+def validate_date_range_is_in_past(
+    date_to: datetime,
+    *,
+    current_date: date,
+) -> DateValidationFailure | None:
+    if date_to.date() >= current_date:
+        return DateValidationFailure(
+            error_code=ValidationErrorCode.DATE_RANGE_NOT_IN_PAST,
             column=InputColumnName.DATE_TO,
         )
     return None

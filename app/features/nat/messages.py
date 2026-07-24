@@ -74,6 +74,9 @@ MESSAGES: dict[str, str] = {
     ValidationErrorCode.INVALID_DATE_RANGE: (
         'Дата окончания не может быть раньше даты начала'
     ),
+    ValidationErrorCode.DATE_RANGE_NOT_IN_PAST: (
+        'Дата окончания должна быть раньше текущей даты'
+    ),
     ValidationErrorCode.DATE_RANGE_LIMIT_EXCEEDED: (
         'Превышена максимально допустимая длительность интервала между датой '
         'начала и датой окончания '

@@ -98,6 +98,7 @@ async def intake_file(
         content=content,
         sender_email=sender_email,
         enforce_max_date_range=settings.NAT_WEB_INTAKE_ENFORCE_MAX_DATE_RANGE,
+        enforce_past_date_range=(settings.NAT_WEB_INTAKE_ENFORCE_PAST_DATE_RANGE),
     )
 
 
@@ -127,6 +128,7 @@ async def intake_file_internal(
         content=content,
         sender_email=sender_email,
         enforce_max_date_range=True,
+        enforce_past_date_range=True,
     )
 
 
