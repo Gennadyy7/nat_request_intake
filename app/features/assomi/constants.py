@@ -8,6 +8,13 @@ class AssomiTaskStatus(StrEnum):
     FAILED = 'failed'
 
 
+class AssomiApiErrorCode(StrEnum):
+    ASSOMI_TASK_NOT_FOUND = 'ASSOMI_TASK_NOT_FOUND'
+    ASSOMI_NOT_READY = 'ASSOMI_NOT_READY'
+    ASSOMI_FILE_NOT_FOUND = 'ASSOMI_FILE_NOT_FOUND'
+    INVALID_FILTER_ASSOMI_STATUS = 'INVALID_FILTER_ASSOMI_STATUS'
+
+
 ASSOMI_CSV_HEADERS: Final[tuple[str, str, str, str, str]] = (
     'Договор',
     'Логин',

@@ -9,8 +9,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.repositories.sqlalchemy import SQLAlchemyRepository
 from app.features.assomi.constants import AssomiTaskStatus
 from app.features.assomi.models import AssomiTask
+from app.features.assomi.query_params import AssomiTaskFilters
+from app.features.assomi.repository_query import (
+    assomi_list_requires_intake_join,
+    assomi_sort_column,
+    build_assomi_list_filter_clauses,
+)
+from app.features.assomi.repository_records import AssomiTaskListRecord
 from app.features.nat.constants import NatResultProcessingStatus
-from app.features.nat.models import NatResultProcessingTask
+from app.features.nat.models import NatBatch, NatIntake, NatResultProcessingTask
+from app.features.nat.query_params import SortParams
+from app.features.nat.repository_query import order_by_sort_column
 
 
 class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
@@ -106,3 +115,71 @@ class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
                 updated_at=now,
             )
         )
+
+    async def get_list_record_by_id(
+        self,
+        assomi_task_id: UUID,
+    ) -> AssomiTaskListRecord | None:
+        statement = (
+            select(AssomiTask, NatIntake.number)
+            .join(NatBatch, AssomiTask.nat_batch_id == NatBatch.id)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
+            .where(AssomiTask.id == assomi_task_id)
+        )
+        result = await self._session.execute(statement)
+        row = result.one_or_none()
+        if row is None:
+            return None
+        task, intake_number = row
+        return AssomiTaskListRecord(
+            task=task,
+            intake_number=int(intake_number),
+        )
+
+    async def count_filtered(self, filters: AssomiTaskFilters) -> int:
+        clauses = build_assomi_list_filter_clauses(filters)
+        statement = select(func.count()).select_from(AssomiTask)
+        if assomi_list_requires_intake_join(filters):
+            statement = statement.join(
+                NatBatch,
+                AssomiTask.nat_batch_id == NatBatch.id,
+            ).join(
+                NatIntake,
+                NatBatch.intake_id == NatIntake.id,
+            )
+        if clauses:
+            statement = statement.where(*clauses)
+        result = await self._session.execute(statement)
+        return int(result.scalar_one())
+
+    async def list_filtered(
+        self,
+        filters: AssomiTaskFilters,
+        sort: SortParams,
+        limit: int,
+        offset: int,
+    ) -> Sequence[AssomiTaskListRecord]:
+        clauses = build_assomi_list_filter_clauses(filters)
+        statement = (
+            select(AssomiTask, NatIntake.number)
+            .join(NatBatch, AssomiTask.nat_batch_id == NatBatch.id)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
+            .order_by(
+                order_by_sort_column(
+                    assomi_sort_column(sort),
+                    sort.sort_order,
+                )
+            )
+            .limit(limit)
+            .offset(offset)
+        )
+        if clauses:
+            statement = statement.where(*clauses)
+        result = await self._session.execute(statement)
+        return [
+            AssomiTaskListRecord(
+                task=task,
+                intake_number=int(intake_number),
+            )
+            for task, intake_number in result.all()
+        ]

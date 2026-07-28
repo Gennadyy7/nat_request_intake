@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.features.assomi.constants import AssomiTaskStatus
 from app.features.email.constants import EmailReplyStatus
 from app.features.nat.constants import NatResultProcessingStatus
 from app.features.nat.schemas.intake_list import NatIntakeListItem
@@ -30,8 +31,17 @@ class IntakeResultProcessingStats(BaseModel):
     completed_at: datetime | None = None
 
 
+class IntakeAssomiStats(BaseModel):
+    status: AssomiTaskStatus
+    found_count: int | None = None
+    missing_count: int | None = None
+    error_message: str | None = None
+    completed_at: datetime | None = None
+
+
 class NatIntakeMonitoringListItem(NatIntakeListItem):
     rows: IntakeFileRowStats | None = None
     tasks: IntakeNatTaskStats | None = None
     email_reply_status: EmailReplyStatus | None = None
     result_processing: IntakeResultProcessingStats | None = None
+    assomi: IntakeAssomiStats | None = None

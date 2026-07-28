@@ -10,6 +10,7 @@ from sqlalchemy.sql.elements import ColumnElement, Label
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.repositories.sqlalchemy import SQLAlchemyRepository
+from app.features.assomi.models import AssomiTask
 from app.features.email.models import EmailMessage
 from app.features.nat.constants import (
     NON_TERMINAL_NAT_STATUSES,
@@ -37,6 +38,7 @@ from app.features.nat.query_params import (
 )
 from app.features.nat.repository_query import (
     batch_sort_column,
+    build_assomi_filter_clauses,
     build_batch_filter_clauses,
     build_intake_filter_clauses,
     build_result_processing_filter_clauses,
@@ -44,6 +46,7 @@ from app.features.nat.repository_query import (
     build_task_filter_clauses,
     intake_list_requires_batch_join,
     intake_sort_column,
+    monitoring_requires_assomi_join,
     monitoring_requires_result_processing_join,
     order_by_sort_column,
     result_processing_list_requires_intake_join,
@@ -158,7 +161,8 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
     ) -> int:
         clauses = build_intake_filter_clauses(filters)
         result_processing_clauses = build_result_processing_filter_clauses(filters)
-        all_clauses = clauses + result_processing_clauses
+        assomi_clauses = build_assomi_filter_clauses(filters)
+        all_clauses = clauses + result_processing_clauses + assomi_clauses
         statement = (
             select(func.count())
             .select_from(NatIntake)
@@ -168,6 +172,11 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
             statement = statement.outerjoin(
                 NatResultProcessingTask,
                 NatResultProcessingTask.nat_batch_id == NatBatch.id,
+            )
+        if monitoring_requires_assomi_join(filters):
+            statement = statement.outerjoin(
+                AssomiTask,
+                AssomiTask.nat_batch_id == NatBatch.id,
             )
         if all_clauses:
             statement = statement.where(*all_clauses)
@@ -183,7 +192,8 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
     ) -> Sequence[NatIntakeMonitoringListRecord]:
         clauses = build_intake_filter_clauses(filters)
         result_processing_clauses = build_result_processing_filter_clauses(filters)
-        all_clauses = clauses + result_processing_clauses
+        assomi_clauses = build_assomi_filter_clauses(filters)
+        all_clauses = clauses + result_processing_clauses + assomi_clauses
         rejected_row_count = _rejected_row_count_subquery()
         tasks_total = _nullable_batch_task_count_subquery(
             extra_condition=None,
@@ -222,11 +232,20 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 NatResultProcessingTask.total_lines,
                 NatResultProcessingTask.error_message,
                 NatResultProcessingTask.completed_at,
+                AssomiTask.status,
+                AssomiTask.found_count,
+                AssomiTask.missing_count,
+                AssomiTask.error_message,
+                AssomiTask.completed_at,
             )
             .outerjoin(NatBatch, NatBatch.intake_id == NatIntake.id)
             .outerjoin(
                 NatResultProcessingTask,
                 NatResultProcessingTask.nat_batch_id == NatBatch.id,
+            )
+            .outerjoin(
+                AssomiTask,
+                AssomiTask.nat_batch_id == NatBatch.id,
             )
             .outerjoin(EmailMessage, EmailMessage.nat_intake_id == NatIntake.id)
             .order_by(order_by_sort_column(intake_sort_column(sort), sort.sort_order))
@@ -260,6 +279,11 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 ),
                 result_processing_error_message=result_processing_error_message,
                 result_processing_completed_at=result_processing_completed_at,
+                assomi_status=assomi_status,
+                assomi_found_count=_optional_int(assomi_found_count),
+                assomi_missing_count=_optional_int(assomi_missing_count),
+                assomi_error_message=assomi_error_message,
+                assomi_completed_at=assomi_completed_at,
             )
             for (
                 intake,
@@ -278,6 +302,11 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 result_processing_total_lines,
                 result_processing_error_message,
                 result_processing_completed_at,
+                assomi_status,
+                assomi_found_count,
+                assomi_missing_count,
+                assomi_error_message,
+                assomi_completed_at,
             ) in result.all()
         ]
 

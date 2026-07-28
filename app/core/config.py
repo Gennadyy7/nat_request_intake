@@ -69,6 +69,7 @@ class Settings(BaseSettings):
     NAT_MISSING_FIELD_PLACEHOLDER: str
     NAT_UPLOAD_BASE_DIR: str
     SPIN_AGGREGATED_BASE_DIR: str
+    ASSOMI_BASE_DIR: str
     nat_upload_date_timezone_env: str = Field(
         validation_alias='NAT_UPLOAD_DATE_TIMEZONE',
     )
@@ -149,7 +150,12 @@ class Settings(BaseSettings):
             ) from exc
         return value
 
-    @field_validator('NAT_UPLOAD_BASE_DIR', 'SPIN_AGGREGATED_BASE_DIR', mode='before')
+    @field_validator(
+        'NAT_UPLOAD_BASE_DIR',
+        'SPIN_AGGREGATED_BASE_DIR',
+        'ASSOMI_BASE_DIR',
+        mode='before',
+    )
     @classmethod
     def validate_absolute_base_dir(cls, value: object) -> str:
         if not isinstance(value, str):

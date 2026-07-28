@@ -4,6 +4,9 @@ from uuid import UUID
 
 from fastapi import HTTPException, Query, status
 
+from app.features.assomi.status_filter_parsing import (
+    parse_assomi_monitoring_status_filter,
+)
 from app.features.nat.constants import ApiErrorCode, IntakeSource, IntakeStatus
 from app.features.nat.messages import get_message
 from app.features.nat.pagination import (
@@ -153,6 +156,7 @@ def get_nat_intake_monitoring_filters(
     filter_source: Annotated[str | None, Query()] = None,
     filter_processing_paused: Annotated[bool | None, Query()] = None,
     filter_result_processing_status: Annotated[str | None, Query()] = None,
+    filter_assomi_status: Annotated[str | None, Query()] = None,
 ) -> NatIntakeMonitoringFilters:
     base_filters = get_nat_intake_filters(
         filter_intake_id=filter_intake_id,
@@ -168,6 +172,7 @@ def get_nat_intake_monitoring_filters(
     result_processing_filter = parse_result_processing_status_filter(
         filter_result_processing_status,
     )
+    assomi_filter = parse_assomi_monitoring_status_filter(filter_assomi_status)
     return NatIntakeMonitoringFilters(
         intake_id=base_filters.intake_id,
         intake_number=base_filters.intake_number,
@@ -180,6 +185,8 @@ def get_nat_intake_monitoring_filters(
         processing_paused=base_filters.processing_paused,
         result_processing_status=result_processing_filter.eq_value,
         result_processing_status_is_null=result_processing_filter.is_null,
+        assomi_status=assomi_filter.eq_value,
+        assomi_status_is_null=assomi_filter.is_null,
     )
 
 

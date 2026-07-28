@@ -1,6 +1,7 @@
 from sqlalchemy import ColumnElement, asc, desc, or_
 from sqlalchemy.orm import InstrumentedAttribute
 
+from app.features.assomi.models import AssomiTask
 from app.features.nat.models import (
     NatBatch,
     NatIntake,
@@ -71,6 +72,12 @@ def monitoring_requires_result_processing_join(
     )
 
 
+def monitoring_requires_assomi_join(
+    filters: NatIntakeMonitoringFilters,
+) -> bool:
+    return filters.assomi_status_is_null or filters.assomi_status is not None
+
+
 def build_result_processing_filter_clauses(
     filters: NatIntakeMonitoringFilters,
 ) -> list[ColumnElement[bool]]:
@@ -81,6 +88,17 @@ def build_result_processing_filter_clauses(
         clauses.append(
             NatResultProcessingTask.status == filters.result_processing_status.value
         )
+    return clauses
+
+
+def build_assomi_filter_clauses(
+    filters: NatIntakeMonitoringFilters,
+) -> list[ColumnElement[bool]]:
+    clauses: list[ColumnElement[bool]] = []
+    if filters.assomi_status_is_null:
+        clauses.append(AssomiTask.id.is_(None))
+    elif filters.assomi_status is not None:
+        clauses.append(AssomiTask.status == filters.assomi_status.value)
     return clauses
 
 

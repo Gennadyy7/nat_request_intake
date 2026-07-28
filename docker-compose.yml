@@ -83,6 +83,8 @@ services:
       - nat_uploads:/app/backend/uploads/nat
       # Must match SPIN_AGGREGATED_BASE_DIR.
       - ${SPIN_AGGREGATED_HOST_DIR}:/app/data/aggregated
+      # Must match ASSOMI_BASE_DIR (shared with assomi_worker; API reads CSV artifacts).
+      - ${ASSOMI_HOST_DIR}:/app/data/assomi
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 5s

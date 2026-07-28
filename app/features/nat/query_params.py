@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Final, Literal
 from uuid import UUID
 
+from app.features.assomi.constants import AssomiTaskStatus
 from app.features.nat.constants import (
     IntakeSource,
     IntakeStatus,
@@ -48,6 +49,8 @@ class NatIntakeFilters:
 class NatIntakeMonitoringFilters(NatIntakeFilters):
     result_processing_status: NatResultProcessingStatus | None = None
     result_processing_status_is_null: bool = False
+    assomi_status: AssomiTaskStatus | None = None
+    assomi_status_is_null: bool = False
 
 
 @dataclass(frozen=True, slots=True)

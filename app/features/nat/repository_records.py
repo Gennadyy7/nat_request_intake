@@ -65,3 +65,8 @@ class NatIntakeMonitoringListRecord:
     result_processing_total_lines: int | None
     result_processing_error_message: str | None
     result_processing_completed_at: datetime | None
+    assomi_status: str | None
+    assomi_found_count: int | None
+    assomi_missing_count: int | None
+    assomi_error_message: str | None
+    assomi_completed_at: datetime | None

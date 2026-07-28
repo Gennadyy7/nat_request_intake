@@ -1,3 +1,4 @@
+from app.features.assomi.constants import AssomiTaskStatus
 from app.features.email.constants import EmailReplyStatus
 from app.features.nat.constants import (
     IntakeSource,
@@ -11,6 +12,7 @@ from app.features.nat.repository_records import (
     NatIntakeMonitoringListRecord,
 )
 from app.features.nat.schemas.intake_monitoring import (
+    IntakeAssomiStats,
     IntakeFileRowStats,
     IntakeNatTaskStats,
     IntakeResultProcessingStats,
@@ -31,6 +33,7 @@ def to_monitoring_list_item(
         tasks=_build_task_stats(record),
         email_reply_status=_parse_reply_status(record.email_reply_status),
         result_processing=_build_result_processing_stats(record),
+        assomi=_build_assomi_stats(record),
     )
 
 
@@ -112,6 +115,21 @@ def _build_result_processing_stats(
         total_lines=record.result_processing_total_lines or 0,
         error_message=record.result_processing_error_message,
         completed_at=record.result_processing_completed_at,
+    )
+
+
+def _build_assomi_stats(
+    record: NatIntakeMonitoringListRecord,
+) -> IntakeAssomiStats | None:
+    if record.assomi_status is None:
+        return None
+
+    return IntakeAssomiStats(
+        status=AssomiTaskStatus(record.assomi_status),
+        found_count=record.assomi_found_count,
+        missing_count=record.assomi_missing_count,
+        error_message=record.assomi_error_message,
+        completed_at=record.assomi_completed_at,
     )
 
 
