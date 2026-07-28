@@ -39,6 +39,7 @@ poller = [
 ]
 worker = []
 notify = []
+assomi = []
 dev = [
     "loguru-mypy (>=0.0.4,<0.0.5)",
     "ruff (>=0.15.12,<0.16.0)",
@@ -53,6 +54,7 @@ target-version = "py312"
 
 [tool.ruff.lint.per-file-ignores]
 "app/features/nat/constants.py" = ["RUF001"]
+"app/features/assomi/constants.py" = ["RUF001"]
 "app/features/email/messages.py" = ["RUF001"]
 "email_poller/app/features/email_reply/messages.py" = ["RUF001"]
 "email_poller/app/features/email_reply/composer.py" = ["RUF001"]
@@ -85,7 +87,7 @@ disallow_incomplete_defs = true
 disallow_untyped_decorators = true
 disallow_any_generics = true
 mypy_path = ["."]
-files = ["app", "email_poller", "nat_task_status_worker", "nat_batch_notify_worker"]
+files = ["app", "email_poller", "nat_task_status_worker", "nat_batch_notify_worker", "assomi_worker"]
 
 disallow_any_explicit = true
 

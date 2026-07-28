@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.logging import get_logger
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
+from app.features.assomi.repositories import AssomiTaskRepository
 from app.features.email.repositories import (
     EmailMessageRepository,
     EmailSenderRepository,
@@ -33,6 +34,7 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
             None
         )
         self._nat_dedup_keys: NatDedupKeyRepository | None = None
+        self._assomi_tasks: AssomiTaskRepository | None = None
         self._email_senders: EmailSenderRepository | None = None
         self._email_messages: EmailMessageRepository | None = None
         self._committed = False
@@ -106,6 +108,17 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         return self._nat_dedup_keys
 
     @property
+    def assomi_tasks(self) -> AssomiTaskRepository:
+        if self._assomi_tasks is None:
+            logger.error(
+                'Attempted to access assomi_tasks repository outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._assomi_tasks
+
+    @property
     def email_senders(self) -> EmailSenderRepository:
         if self._email_senders is None:
             logger.error(
@@ -142,10 +155,13 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
             self._session,
         )
         self._nat_dedup_keys = NatDedupKeyRepository(self._session)
+        self._assomi_tasks = AssomiTaskRepository(self._session)
         self._email_senders = EmailSenderRepository(self._session)
         self._email_messages = EmailMessageRepository(self._session)
         self._committed = False
-        logger.debug('Nat and email repositories initialized for UnitOfWork session')
+        logger.debug(
+            'Nat, ASSOMI and email repositories initialized for UnitOfWork session'
+        )
         return self
 
     async def __aexit__(

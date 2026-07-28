@@ -13,6 +13,7 @@ sys.path.append(str(Path(__file__).resolve().parents[0]))
 
 from app.core.config import settings
 from app.core.database import Base
+from app.features.assomi.models import AssomiTask  # noqa: F401
 from app.features.email.models import (  # noqa: F401
     EmailMessage,
     EmailSender,

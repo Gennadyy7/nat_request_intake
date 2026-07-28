@@ -163,6 +163,33 @@ services:
     networks:
       - keycloak_network
 
+  assomi_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.assomi_worker
+    container_name: assomi_worker_service
+    depends_on:
+      app_postgres:
+        condition: service_healthy
+    ports:
+      - "8004:8004"
+    env_file:
+      - ./.env
+    volumes:
+      # Read SPIN-matched artifacts (same tree as aggregator / fastapi_app).
+      - ${SPIN_AGGREGATED_HOST_DIR}:/app/data/aggregated:ro
+      # Write ASSOMI CSV artifacts.
+      - ${ASSOMI_HOST_DIR}:/app/data/assomi
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8004/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - keycloak_network
+
 volumes:
 #  postgres_data:
   app_postgres_data:

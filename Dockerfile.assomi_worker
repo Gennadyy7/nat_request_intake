@@ -1,0 +1,36 @@
+FROM python:3.12-slim AS builder
+
+RUN pip install poetry==2.3.4
+
+RUN poetry self add poetry-plugin-export
+
+WORKDIR /app
+COPY pyproject.toml poetry.lock ./
+
+RUN poetry config virtualenvs.create false && \
+    poetry export -f requirements.txt --output requirements.txt --without-hashes --with assomi && \
+    pip install --no-cache-dir -r requirements.txt && \
+    rm requirements.txt && \
+    rm -f pyproject.toml poetry.lock
+
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY --from=builder /usr/local/lib/python3.12/site-packages/ /usr/local/lib/python3.12/site-packages/
+COPY --from=builder /usr/local/bin/ /usr/local/bin/
+
+COPY app/ ./app/
+COPY assomi_worker/ ./assomi_worker/
+
+EXPOSE 8004
+
+HEALTHCHECK --interval=5s --timeout=3s --start-period=15s --retries=5 \
+    CMD curl -f http://localhost:8004/health || exit 1
+
+CMD ["python", "-m", "assomi_worker.app.main"]

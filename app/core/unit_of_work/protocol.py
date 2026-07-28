@@ -1,6 +1,7 @@
 from types import TracebackType
 from typing import Protocol, Self
 
+from app.features.assomi.repositories import AssomiTaskRepository
 from app.features.email.repositories import (
     EmailMessageRepository,
     EmailSenderRepository,
@@ -33,6 +34,9 @@ class UnitOfWorkProtocol(Protocol):
 
     @property
     def nat_dedup_keys(self) -> NatDedupKeyRepository: ...
+
+    @property
+    def assomi_tasks(self) -> AssomiTaskRepository: ...
 
     @property
     def email_senders(self) -> EmailSenderRepository: ...
