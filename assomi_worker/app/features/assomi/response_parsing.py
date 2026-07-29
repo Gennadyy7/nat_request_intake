@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from xml.etree import ElementTree as ET
 
-from app.features.assomi.constants import ASSOMI_CODE_MSG_TAKEN_MESSAGE_MARKERS
+from assomi_worker.app.core.config import settings
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,7 +28,8 @@ class AssomiAbonentInfo:
 def is_code_msg_taken_error(error: AssomiBusinessError) -> bool:
     message = error.error_message.casefold()
     return any(
-        marker.casefold() in message for marker in ASSOMI_CODE_MSG_TAKEN_MESSAGE_MARKERS
+        marker.casefold() in message
+        for marker in settings.ASSOMI_CODE_MSG_TAKEN_MESSAGE_MARKERS
     )
 
 
@@ -61,10 +62,27 @@ def _extract_xml(response_text: str) -> str:
     return stripped[xml_start:]
 
 
+def _is_non_error_status(
+    error_code: str | None,
+    error_message: str | None,
+    *,
+    success_codes: frozenset[str],
+) -> bool:
+    if error_code is None and error_message is None:
+        return True
+    return (
+        error_code is not None and error_code in success_codes and error_message is None
+    )
+
+
 def _find_business_error(root: ET.Element) -> AssomiBusinessError | None:
     error_code = _find_text(root, 'Error_code')
     error_message = _find_text(root, 'Error_message')
-    if error_code is None and error_message is None:
+    if _is_non_error_status(
+        error_code,
+        error_message,
+        success_codes=settings.ASSOMI_SUCCESS_ERROR_CODES,
+    ):
         return None
     return AssomiBusinessError(
         error_code=error_code or '',

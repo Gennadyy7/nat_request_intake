@@ -53,6 +53,14 @@ class Settings(BaseSettings):
     ASSOMI_CODE_MSG_SCOPE: Literal['global', 'header_triple']
     ASSOMI_BASE_DIR: str
     SPIN_AGGREGATED_BASE_DIR: str
+    assomi_success_error_codes_env: str = Field(
+        default='0',
+        validation_alias='ASSOMI_SUCCESS_ERROR_CODES',
+    )
+    assomi_code_msg_taken_message_markers_env: str = Field(
+        default='уже находится в базе,таким номером',
+        validation_alias='ASSOMI_CODE_MSG_TAKEN_MESSAGE_MARKERS',
+    )
 
     @field_validator('assomi_systime_timezone_env', mode='before')
     @classmethod
@@ -149,6 +157,22 @@ class Settings(BaseSettings):
     @cached_property
     def ASSOMI_SYSTIME_TIMEZONE(self) -> ZoneInfo:  # noqa: N802
         return ZoneInfo(self.assomi_systime_timezone_env)
+
+    @cached_property
+    def ASSOMI_SUCCESS_ERROR_CODES(self) -> frozenset[str]:  # noqa: N802
+        return frozenset(
+            item.strip()
+            for item in self.assomi_success_error_codes_env.split(',')
+            if item.strip()
+        )
+
+    @cached_property
+    def ASSOMI_CODE_MSG_TAKEN_MESSAGE_MARKERS(self) -> tuple[str, ...]:  # noqa: N802
+        return tuple(
+            item.strip()
+            for item in self.assomi_code_msg_taken_message_markers_env.split(',')
+            if item.strip()
+        )
 
 
 settings = Settings()  # type: ignore[call-arg]
