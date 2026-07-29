@@ -54,11 +54,9 @@ class Settings(BaseSettings):
     ASSOMI_BASE_DIR: str
     SPIN_AGGREGATED_BASE_DIR: str
     assomi_success_error_codes_env: str = Field(
-        default='0',
         validation_alias='ASSOMI_SUCCESS_ERROR_CODES',
     )
     assomi_code_msg_taken_message_markers_env: str = Field(
-        default='уже находится в базе,таким номером',
         validation_alias='ASSOMI_CODE_MSG_TAKEN_MESSAGE_MARKERS',
     )
 
