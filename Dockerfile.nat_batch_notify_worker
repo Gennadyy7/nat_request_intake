@@ -28,6 +28,11 @@ COPY --from=builder /usr/local/bin/ /usr/local/bin/
 COPY app/ ./app/
 COPY nat_batch_notify_worker/ ./nat_batch_notify_worker/
 
+RUN groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid appuser --create-home appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
 EXPOSE 8003
 
 HEALTHCHECK --interval=5s --timeout=3s --start-period=15s --retries=5 \
