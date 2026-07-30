@@ -7,7 +7,10 @@ from pydantic import EmailStr, TypeAdapter, ValidationError
 from app.core.config import settings
 from app.features.auth.constants import AuthErrorCode
 from app.features.auth.schemas import AuthErrorResponse, User
-from app.features.auth.service_auth import is_email_poller_service_user
+from app.features.auth.service_auth import (
+    can_manage_email_senders,
+    is_email_poller_service_user,
+)
 from app.features.email.schemas import normalize_email
 from app.features.nat.messages import get_message
 
@@ -41,6 +44,20 @@ async def require_email_poller_service(
         detail=AuthErrorResponse(
             code=AuthErrorCode.UNAUTHORIZED_SERVICE,
             message=get_message(AuthErrorCode.UNAUTHORIZED_SERVICE),
+        ).model_dump(mode='json'),
+    )
+
+
+async def require_sender_manager(
+    user: Annotated[User, Depends(get_user)],
+) -> User:
+    if can_manage_email_senders(user, admin_roles=settings.ADMIN_ROLES):
+        return user
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail=AuthErrorResponse(
+            code=AuthErrorCode.INSUFFICIENT_PERMISSIONS,
+            message=get_message(AuthErrorCode.INSUFFICIENT_PERMISSIONS),
         ).model_dump(mode='json'),
     )
 

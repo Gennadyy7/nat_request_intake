@@ -106,6 +106,9 @@ MESSAGES: dict[str, str] = {
         'Доступ запрещён: требуется учётная запись сервиса email-poller'
     ),
     AuthErrorCode.INVALID_SENDER_EMAIL: 'Некорректный адрес отправителя',
+    AuthErrorCode.INSUFFICIENT_PERMISSIONS: (
+        'Недостаточно прав для управления белым списком отправителей'
+    ),
     # ApiErrorCode
     ApiErrorCode.INTAKE_NOT_FOUND: 'Запрос на загрузку не найден',
     ApiErrorCode.BATCH_NOT_FOUND: 'Пакет не найден',
