@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     ASSOMI_CODE_MSG_START: int = Field(ge=1)
     ASSOMI_CODE_MSG_SCOPE: Literal['global', 'header_triple']
     ASSOMI_BASE_DIR: str
+    ASSOMI_CSV_ENCODING: Literal['utf-8-sig', 'utf-8', 'cp1251']
     SPIN_AGGREGATED_BASE_DIR: str
     assomi_success_error_codes_env: str = Field(
         validation_alias='ASSOMI_SUCCESS_ERROR_CODES',

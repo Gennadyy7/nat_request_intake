@@ -172,7 +172,11 @@ class AssomiWorkerService:
             )
 
             if not login_set.local_parts:
-                await write_assomi_csv(output_path=output_path, rows=[])
+                await write_assomi_csv(
+                    output_path=output_path,
+                    rows=[],
+                    encoding=settings.ASSOMI_CSV_ENCODING,
+                )
                 await uow.assomi_tasks.mark_completed(
                     task.id,
                     output_path=output_path,
@@ -181,9 +185,11 @@ class AssomiWorkerService:
                 )
                 await uow.commit()
                 logger.info(
-                    'ASSOMI task completed with empty logins: assomi_task_id={} path={}',
+                    'ASSOMI task completed with empty logins: '
+                    'assomi_task_id={} path={} encoding={}',
                     task.id,
                     output_path,
+                    settings.ASSOMI_CSV_ENCODING,
                 )
                 return 'success'
 
@@ -214,7 +220,11 @@ class AssomiWorkerService:
                     login_set,
                     result.abonents,
                 )
-                await write_assomi_csv(output_path=output_path, rows=rows)
+                await write_assomi_csv(
+                    output_path=output_path,
+                    rows=rows,
+                    encoding=settings.ASSOMI_CSV_ENCODING,
+                )
                 await uow.assomi_tasks.mark_completed(
                     task.id,
                     output_path=output_path,
@@ -224,7 +234,7 @@ class AssomiWorkerService:
                 await uow.commit()
                 logger.info(
                     'ASSOMI task completed: assomi_task_id={} batch_id={} '
-                    'found={} missing={} code_msg={} retries={} path={}',
+                    'found={} missing={} code_msg={} retries={} path={} encoding={}',
                     task.id,
                     task.nat_batch_id,
                     found_count,
@@ -232,6 +242,7 @@ class AssomiWorkerService:
                     result.code_msg_used,
                     result.code_msg_retries,
                     output_path,
+                    settings.ASSOMI_CSV_ENCODING,
                 )
                 return 'success'
 

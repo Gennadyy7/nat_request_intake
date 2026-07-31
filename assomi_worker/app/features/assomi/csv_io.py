@@ -3,6 +3,7 @@ import csv
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path, PurePath
+from typing import Literal
 
 from app.features.assomi.constants import (
     ASSOMI_CSV_DELIMITER,
@@ -13,6 +14,8 @@ from app.features.assomi.constants import (
 )
 from assomi_worker.app.features.assomi.logins import LoginSet, local_part
 from assomi_worker.app.features.assomi.response_parsing import AssomiAbonent
+
+AssomiCsvEncoding = Literal['utf-8-sig', 'utf-8', 'cp1251']
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,12 +117,17 @@ def build_assomi_rows(
     return rows, found, missing
 
 
-async def write_assomi_csv(*, output_path: str, rows: list[AssomiCsvRow]) -> None:
+async def write_assomi_csv(
+    *,
+    output_path: str,
+    rows: list[AssomiCsvRow],
+    encoding: AssomiCsvEncoding,
+) -> None:
     path = Path(output_path)
 
     def _write() -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open('w', encoding='utf-8-sig', newline='') as handle:
+        with path.open('w', encoding=encoding, newline='') as handle:
             writer = csv.writer(handle, delimiter=ASSOMI_CSV_DELIMITER)
             writer.writerow(ASSOMI_CSV_HEADERS)
             for row in rows:
