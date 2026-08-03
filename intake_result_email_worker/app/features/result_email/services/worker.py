@@ -95,7 +95,12 @@ class IntakeResultEmailWorkerService:
 
     async def _process_one_batch(self) -> SendOutcome | None:
         async with unit_of_work() as uow:
-            batches = await uow.nat_batches.claim_for_result_email(1)
+            batches = await uow.nat_batches.claim_for_result_email(
+                1,
+                respect_processing_pause=(
+                    settings.INTAKE_RESULT_EMAIL_RESPECT_PROCESSING_PAUSE
+                ),
+            )
             if not batches:
                 return None
             batch = batches[0]

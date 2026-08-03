@@ -37,6 +37,7 @@ class Settings(BaseSettings):
 
     INTAKE_RESULT_EMAIL_ENABLED: bool
     INTAKE_RESULT_EMAIL_MAX_ATTACHMENT_BYTES: int = Field(ge=1)
+    INTAKE_RESULT_EMAIL_RESPECT_PROCESSING_PAUSE: bool
 
     IMAP_SERVER: str
     IMAP_USER: str

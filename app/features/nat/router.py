@@ -198,7 +198,7 @@ async def get_intake(
             'description': 'Intake not found',
         },
         status.HTTP_409_CONFLICT: {
-            'description': 'Intake cannot be paused or batch already notified',
+            'description': 'Intake cannot be paused or processing already finished',
         },
     },
 )

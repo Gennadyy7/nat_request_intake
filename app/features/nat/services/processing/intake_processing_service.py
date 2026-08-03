@@ -28,8 +28,8 @@ class IntakeProcessingService:
         if batch is None:
             self._raise_intake_not_pausable(intake_id)
 
-        if batch.notified_at is not None:
-            self._raise_batch_already_notified(intake_id, batch.id)
+        if batch.result_emailed_at is not None:
+            self._raise_batch_result_already_emailed(intake_id, batch.id)
 
         await self._uow.nat_batches.set_processing_paused(batch.id, paused=paused)
         await self._uow.commit()
@@ -59,7 +59,7 @@ class IntakeProcessingService:
             },
         )
 
-    def _raise_batch_already_notified(
+    def _raise_batch_result_already_emailed(
         self,
         intake_id: UUID,
         batch_id: UUID,
@@ -67,8 +67,8 @@ class IntakeProcessingService:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
-                'code': ApiErrorCode.BATCH_ALREADY_NOTIFIED,
-                'message': get_message(ApiErrorCode.BATCH_ALREADY_NOTIFIED),
+                'code': ApiErrorCode.BATCH_RESULT_ALREADY_EMAILED,
+                'message': get_message(ApiErrorCode.BATCH_RESULT_ALREADY_EMAILED),
                 'intake_id': str(intake_id),
                 'batch_id': str(batch_id),
             },

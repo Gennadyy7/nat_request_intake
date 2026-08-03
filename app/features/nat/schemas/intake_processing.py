@@ -4,7 +4,9 @@ from pydantic import BaseModel, Field
 class IntakeProcessingUpdate(BaseModel):
     paused: bool = Field(
         description=(
-            'When true, dispatch and notify workers skip the batch; '
-            'poll continues for already sent tasks'
+            'When true, NAT dispatch, batch notify, and ASSOMI enqueue/claim '
+            'skip the batch; NAT poll continues for already sent tasks. '
+            'Final result email respects pause only when configured in the '
+            'result-email worker.'
         ),
     )

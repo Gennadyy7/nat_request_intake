@@ -55,11 +55,17 @@ class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
                     NatResultProcessingTask.id,
                     NatResultProcessingTask.nat_batch_id,
                     literal(AssomiTaskStatus.PENDING.value),
-                ).where(
+                )
+                .join(
+                    NatBatch,
+                    NatResultProcessingTask.nat_batch_id == NatBatch.id,
+                )
+                .where(
                     NatResultProcessingTask.status
                     == NatResultProcessingStatus.COMPLETED.value,
                     has_spin_matched_path,
                     ~already_enqueued,
+                    NatBatch.processing_paused.is_(False),
                 ),
             )
             .on_conflict_do_nothing(index_elements=['aggregation_task_id'])
@@ -71,7 +77,11 @@ class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
     async def claim_for_processing(self, limit: int | None) -> Sequence[AssomiTask]:
         statement = (
             select(AssomiTask)
-            .where(AssomiTask.status == AssomiTaskStatus.PENDING.value)
+            .join(NatBatch, AssomiTask.nat_batch_id == NatBatch.id)
+            .where(
+                AssomiTask.status == AssomiTaskStatus.PENDING.value,
+                NatBatch.processing_paused.is_(False),
+            )
             .order_by(AssomiTask.created_at.asc())
             .with_for_update(skip_locked=True)
         )

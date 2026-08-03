@@ -531,7 +531,12 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
         result = await self._session.execute(statement)
         return list(result.scalars().all())
 
-    async def claim_for_result_email(self, limit: int | None) -> Sequence[NatBatch]:
+    async def claim_for_result_email(
+        self,
+        limit: int | None,
+        *,
+        respect_processing_pause: bool,
+    ) -> Sequence[NatBatch]:
         pending_dispatch = and_(
             NatTask.status.is_(None),
             NatTask.error_message.is_(None),
@@ -591,9 +596,9 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
             .correlate(NatBatch)
             .exists()
         )
-        has_spin_matched_path = text(
+        has_no_spin_matched_path = text(
             """
-            EXISTS (
+            NOT EXISTS (
                 SELECT 1
                 FROM jsonb_array_elements(aggregation_tasks.output_files) AS elem
                 WHERE COALESCE(elem->>'spin_matched_path', '') <> ''
@@ -606,7 +611,7 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
                 NatResultProcessingTask.nat_batch_id == NatBatch.id,
                 NatResultProcessingTask.status
                 == NatResultProcessingStatus.COMPLETED.value,
-                ~has_spin_matched_path,
+                has_no_spin_matched_path,
             )
             .correlate(NatBatch)
             .exists()
@@ -623,14 +628,16 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
             and_(aggregation_completed_without_spin, ~has_assomi_task),
             nat_all_failed,
         )
+        conditions = [
+            NatBatch.result_emailed_at.is_(None),
+            ready_for_result_email,
+        ]
+        if respect_processing_pause:
+            conditions.append(NatBatch.processing_paused.is_(False))
         statement = (
             select(NatBatch)
             .join(NatIntake, NatBatch.intake_id == NatIntake.id)
-            .where(
-                NatBatch.result_emailed_at.is_(None),
-                NatBatch.processing_paused.is_(False),
-                ready_for_result_email,
-            )
+            .where(*conditions)
             .order_by(NatBatch.created_at.asc())
             .with_for_update(skip_locked=True)
         )

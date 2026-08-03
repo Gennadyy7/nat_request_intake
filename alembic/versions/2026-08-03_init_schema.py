@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: 1b5ac9e76e3a
+Revision ID: fcf51cebd7e0
 Revises:
-Create Date: 2026-08-03 11:07:09.345257
+Create Date: 2026-08-03 15:42:59.785782
 
 """
 
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '1b5ac9e76e3a'
+revision: str = 'fcf51cebd7e0'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -643,7 +643,7 @@ def upgrade() -> None:
             sa.Boolean(),
             server_default=sa.text('false'),
             nullable=False,
-            comment='When true, dispatch, notify, and result-email workers skip this batch; poll continues for already sent tasks',
+            comment='When true, NAT dispatch, batch notify, and ASSOMI enqueue/claim skip this batch; NAT poll continues for already sent tasks; result-email skip is controlled by worker config',
         ),
         sa.Column(
             'created_at',

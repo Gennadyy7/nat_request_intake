@@ -142,7 +142,7 @@ MESSAGES: dict[str, str] = {
     ApiErrorCode.INTAKE_NOT_PAUSABLE: (
         'Заявку нельзя приостановить: отсутствует принятый пакет обработки'
     ),
-    ApiErrorCode.BATCH_ALREADY_NOTIFIED: ('Обработка уже передана внешнему сервису'),
+    ApiErrorCode.BATCH_RESULT_ALREADY_EMAILED: ('Обработка заявки уже завершена'),
     ApiErrorCode.MANUAL_SPIN_MATCH_FAILED: (
         'Сервис SPIN отклонил запуск ручного сопоставления'
     ),

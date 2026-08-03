@@ -230,8 +230,9 @@ class NatBatch(Base, TimestampMixin):
         default=False,
         server_default=text('false'),
         comment=(
-            'When true, dispatch, notify, and result-email workers skip this batch; '
-            'poll continues for already sent tasks'
+            'When true, NAT dispatch, batch notify, and ASSOMI enqueue/claim '
+            'skip this batch; NAT poll continues for already sent tasks; '
+            'result-email skip is controlled by worker config'
         ),
     )
 
