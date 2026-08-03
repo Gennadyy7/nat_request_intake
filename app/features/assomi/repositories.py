@@ -116,6 +116,11 @@ class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
             )
         )
 
+    async def get_by_nat_batch_id(self, nat_batch_id: UUID) -> AssomiTask | None:
+        statement = select(AssomiTask).where(AssomiTask.nat_batch_id == nat_batch_id)
+        result = await self._session.execute(statement)
+        return result.scalar_one_or_none()
+
     async def get_list_record_by_id(
         self,
         assomi_task_id: UUID,

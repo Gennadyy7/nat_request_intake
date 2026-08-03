@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: 7f2c11e33a4b
+Revision ID: 1b5ac9e76e3a
 Revises:
-Create Date: 2026-07-28 10:34:31.045135
+Create Date: 2026-08-03 11:07:09.345257
 
 """
 
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '7f2c11e33a4b'
+revision: str = '1b5ac9e76e3a'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -633,11 +633,17 @@ def upgrade() -> None:
             comment='Timestamp when the external service was notified about batch readiness',
         ),
         sa.Column(
+            'result_emailed_at',
+            sa.DateTime(timezone=True),
+            nullable=True,
+            comment='Timestamp when the final intake result email was successfully sent (success or failure notification)',
+        ),
+        sa.Column(
             'processing_paused',
             sa.Boolean(),
             server_default=sa.text('false'),
             nullable=False,
-            comment='When true, dispatch and notify workers skip this batch; poll continues for already sent tasks',
+            comment='When true, dispatch, notify, and result-email workers skip this batch; poll continues for already sent tasks',
         ),
         sa.Column(
             'created_at',
@@ -676,6 +682,19 @@ def upgrade() -> None:
         ['created_at'],
         unique=False,
         postgresql_where=sa.text('notified_at IS NULL'),
+    )
+    op.create_index(
+        'ix_nat_batches_result_email_queue',
+        'nat_batches',
+        ['created_at'],
+        unique=False,
+        postgresql_where=sa.text('result_emailed_at IS NULL'),
+    )
+    op.create_index(
+        op.f('ix_nat_batches_result_emailed_at'),
+        'nat_batches',
+        ['result_emailed_at'],
+        unique=False,
     )
     op.create_table(
         'nat_intake_row_errors',
@@ -917,6 +936,12 @@ def downgrade() -> None:
         op.f('ix_nat_intake_row_errors_intake_id'), table_name='nat_intake_row_errors'
     )
     op.drop_table('nat_intake_row_errors')
+    op.drop_index(op.f('ix_nat_batches_result_emailed_at'), table_name='nat_batches')
+    op.drop_index(
+        'ix_nat_batches_result_email_queue',
+        table_name='nat_batches',
+        postgresql_where=sa.text('result_emailed_at IS NULL'),
+    )
     op.drop_index(
         'ix_nat_batches_notify_queue',
         table_name='nat_batches',

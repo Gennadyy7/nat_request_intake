@@ -53,6 +53,7 @@ class NatIntakeMonitoringListRecord:
     batch_id: UUID | None
     processing_paused: bool | None
     batch_row_count: int | None
+    result_emailed_at: datetime | None
     rejected_row_count: int
     email_reply_status: str | None
     tasks_total: int | None

@@ -192,6 +192,31 @@ services:
     networks:
       - keycloak_network
 
+  intake_result_email_worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.intake_result_email_worker
+    container_name: intake_result_email_worker_service
+    depends_on:
+      app_postgres:
+        condition: service_healthy
+    ports:
+      - "8005:8005"
+    env_file:
+      - ./.env
+    volumes:
+      # Read ASSOMI CSV artifacts for email attachments (same tree as assomi_worker).
+      - ${ASSOMI_HOST_DIR}:/app/data/assomi:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - keycloak_network
+
 volumes:
 #  postgres_data:
   app_postgres_data:

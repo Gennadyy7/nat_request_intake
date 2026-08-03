@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from app.features.assomi.constants import AssomiTaskStatus
 from app.features.email.constants import EmailReplyStatus
 from app.features.nat.constants import (
@@ -32,6 +34,7 @@ def to_monitoring_list_item(
         rows=_build_row_stats(record),
         tasks=_build_task_stats(record),
         email_reply_status=_parse_reply_status(record.email_reply_status),
+        result_email_status=_parse_result_email_status(record.result_emailed_at),
         result_processing=_build_result_processing_stats(record),
         assomi=_build_assomi_stats(record),
     )
@@ -137,3 +140,11 @@ def _parse_reply_status(value: str | None) -> EmailReplyStatus | None:
     if value is None:
         return None
     return EmailReplyStatus(value)
+
+
+def _parse_result_email_status(
+    result_emailed_at: datetime | None,
+) -> EmailReplyStatus | None:
+    if result_emailed_at is None:
+        return None
+    return EmailReplyStatus.SENT

@@ -214,13 +214,23 @@ class NatBatch(Base, TimestampMixin):
         comment='Timestamp when the external service was notified about batch readiness',
     )
 
+    result_emailed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        index=True,
+        comment=(
+            'Timestamp when the final intake result email was successfully sent '
+            '(success or failure notification)'
+        ),
+    )
+
     processing_paused: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
         default=False,
         server_default=text('false'),
         comment=(
-            'When true, dispatch and notify workers skip this batch; '
+            'When true, dispatch, notify, and result-email workers skip this batch; '
             'poll continues for already sent tasks'
         ),
     )
@@ -251,6 +261,11 @@ class NatBatch(Base, TimestampMixin):
             'created_at',
             postgresql_where=text('notified_at IS NULL'),
         ),
+        Index(
+            'ix_nat_batches_result_email_queue',
+            'created_at',
+            postgresql_where=text('result_emailed_at IS NULL'),
+        ),
         {
             'comment': 'NAT batch files containing multiple processing requests',
         },
@@ -263,7 +278,8 @@ class NatBatch(Base, TimestampMixin):
             f'intake_id={self.intake_id}, '
             f'file_name={self.file_name}, '
             f'row_count={self.row_count}, '
-            f'notified_at={self.notified_at})'
+            f'notified_at={self.notified_at}, '
+            f'result_emailed_at={self.result_emailed_at})'
         )
 
 

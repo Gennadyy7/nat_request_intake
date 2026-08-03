@@ -10,11 +10,13 @@ from sqlalchemy.sql.elements import ColumnElement, Label
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.repositories.sqlalchemy import SQLAlchemyRepository
+from app.features.assomi.constants import AssomiTaskStatus
 from app.features.assomi.models import AssomiTask
 from app.features.email.models import EmailMessage
 from app.features.nat.constants import (
     NON_TERMINAL_NAT_STATUSES,
     IntakeSource,
+    NatResultProcessingStatus,
     NatTaskStatus,
 )
 from app.features.nat.domain.deduplication_key import DeduplicationKey
@@ -220,6 +222,7 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 NatBatch.id,
                 NatBatch.processing_paused,
                 NatBatch.row_count,
+                NatBatch.result_emailed_at,
                 rejected_row_count,
                 EmailMessage.reply_status,
                 tasks_total,
@@ -261,6 +264,7 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 batch_id=batch_id,
                 processing_paused=processing_paused,
                 batch_row_count=batch_row_count,
+                result_emailed_at=result_emailed_at,
                 rejected_row_count=int(rejected_row_count_value),
                 email_reply_status=email_reply_status,
                 tasks_total=_optional_int(tasks_total_value),
@@ -290,6 +294,7 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 batch_id,
                 processing_paused,
                 batch_row_count,
+                result_emailed_at,
                 rejected_row_count_value,
                 email_reply_status,
                 tasks_total_value,
@@ -526,6 +531,114 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
         result = await self._session.execute(statement)
         return list(result.scalars().all())
 
+    async def claim_for_result_email(self, limit: int | None) -> Sequence[NatBatch]:
+        pending_dispatch = and_(
+            NatTask.status.is_(None),
+            NatTask.error_message.is_(None),
+        )
+        in_flight = NatTask.status.in_(NON_TERMINAL_NAT_STATUSES)
+        has_completed_nat = (
+            select(NatTask.id)
+            .where(
+                NatTask.batch_id == NatBatch.id,
+                NatTask.status == NatTaskStatus.COMPLETED,
+            )
+            .correlate(NatBatch)
+            .exists()
+        )
+        has_non_terminal_nat = (
+            select(NatTask.id)
+            .where(
+                NatTask.batch_id == NatBatch.id,
+                or_(pending_dispatch, in_flight),
+            )
+            .correlate(NatBatch)
+            .exists()
+        )
+        has_any_nat_task = (
+            select(NatTask.id)
+            .where(NatTask.batch_id == NatBatch.id)
+            .correlate(NatBatch)
+            .exists()
+        )
+        has_assomi_task = (
+            select(AssomiTask.id)
+            .where(AssomiTask.nat_batch_id == NatBatch.id)
+            .correlate(NatBatch)
+            .exists()
+        )
+        assomi_terminal = (
+            select(AssomiTask.id)
+            .where(
+                AssomiTask.nat_batch_id == NatBatch.id,
+                AssomiTask.status.in_(
+                    (
+                        AssomiTaskStatus.COMPLETED.value,
+                        AssomiTaskStatus.FAILED.value,
+                    )
+                ),
+            )
+            .correlate(NatBatch)
+            .exists()
+        )
+        aggregation_failed = (
+            select(NatResultProcessingTask.id)
+            .where(
+                NatResultProcessingTask.nat_batch_id == NatBatch.id,
+                NatResultProcessingTask.status
+                == NatResultProcessingStatus.FAILED.value,
+            )
+            .correlate(NatBatch)
+            .exists()
+        )
+        has_spin_matched_path = text(
+            """
+            EXISTS (
+                SELECT 1
+                FROM jsonb_array_elements(aggregation_tasks.output_files) AS elem
+                WHERE COALESCE(elem->>'spin_matched_path', '') <> ''
+            )
+            """
+        )
+        aggregation_completed_without_spin = (
+            select(NatResultProcessingTask.id)
+            .where(
+                NatResultProcessingTask.nat_batch_id == NatBatch.id,
+                NatResultProcessingTask.status
+                == NatResultProcessingStatus.COMPLETED.value,
+                ~has_spin_matched_path,
+            )
+            .correlate(NatBatch)
+            .exists()
+        )
+        nat_all_failed = and_(
+            NatIntake.source == IntakeSource.NAT.value,
+            has_any_nat_task,
+            ~has_completed_nat,
+            ~has_non_terminal_nat,
+        )
+        ready_for_result_email = or_(
+            assomi_terminal,
+            aggregation_failed,
+            and_(aggregation_completed_without_spin, ~has_assomi_task),
+            nat_all_failed,
+        )
+        statement = (
+            select(NatBatch)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
+            .where(
+                NatBatch.result_emailed_at.is_(None),
+                NatBatch.processing_paused.is_(False),
+                ready_for_result_email,
+            )
+            .order_by(NatBatch.created_at.asc())
+            .with_for_update(skip_locked=True)
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
+        result = await self._session.execute(statement)
+        return list(result.scalars().all())
+
     async def mark_notified(self, batch_id: UUID) -> None:
         await self._session.execute(
             update(NatBatch)
@@ -533,6 +646,17 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
             .values(
                 notified_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
+            )
+        )
+
+    async def mark_result_emailed(self, batch_id: UUID) -> None:
+        now = datetime.now(UTC)
+        await self._session.execute(
+            update(NatBatch)
+            .where(NatBatch.id == batch_id)
+            .values(
+                result_emailed_at=now,
+                updated_at=now,
             )
         )
 
@@ -614,6 +738,15 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
             f'[{self._model.__name__}] {len(records)} rows bulk-inserted successfully via COPY '
             f'[Session ID: {session_id}]'
         )
+
+    async def list_by_batch_id(self, batch_id: UUID) -> Sequence[NatTask]:
+        statement = (
+            select(NatTask)
+            .where(NatTask.batch_id == batch_id)
+            .order_by(NatTask.created_at.asc())
+        )
+        result = await self._session.execute(statement)
+        return list(result.scalars().all())
 
     async def count_filtered(self, filters: NatTaskFilters) -> int:
         clauses = build_task_filter_clauses(filters)

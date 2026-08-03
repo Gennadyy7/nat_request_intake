@@ -43,5 +43,6 @@ class NatIntakeMonitoringListItem(NatIntakeListItem):
     rows: IntakeFileRowStats | None = None
     tasks: IntakeNatTaskStats | None = None
     email_reply_status: EmailReplyStatus | None = None
+    result_email_status: EmailReplyStatus | None = None
     result_processing: IntakeResultProcessingStats | None = None
     assomi: IntakeAssomiStats | None = None
