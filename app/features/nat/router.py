@@ -57,6 +57,7 @@ from app.features.nat.schemas.intake_monitoring import (
 )
 from app.features.nat.schemas.intake_processing import (
     GlobalProcessingState,
+    GlobalProcessingUpdate,
     IntakeProcessingUpdate,
 )
 from app.features.nat.schemas.pagination import PaginatedResponse
@@ -193,7 +194,7 @@ async def get_global_processing(
 
 @router.patch('/intakes/processing', response_model=GlobalProcessingState)
 async def update_global_processing(
-    payload: IntakeProcessingUpdate,
+    payload: GlobalProcessingUpdate,
     _user: Annotated[User, Depends(get_user)],
     processing_service: Annotated[
         GlobalProcessingService,
