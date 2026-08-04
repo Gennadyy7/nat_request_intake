@@ -704,21 +704,20 @@ class NatGlobalProcessingRepository(SQLAlchemyRepository[NatGlobalProcessing, in
         )
         await self._session.execute(statement)
 
-    async def get_singleton(self) -> NatGlobalProcessing:
-        await self._ensure_singleton()
+    async def get_singleton(self) -> NatGlobalProcessing | None:
         statement = select(NatGlobalProcessing).where(
             NatGlobalProcessing.id == GLOBAL_PROCESSING_SINGLETON_ID,
         )
         result = await self._session.execute(statement)
-        return result.scalar_one()
+        return result.scalar_one_or_none()
 
     async def is_processing_paused(self) -> bool:
-        await self._ensure_singleton()
         statement = select(NatGlobalProcessing.processing_paused).where(
             NatGlobalProcessing.id == GLOBAL_PROCESSING_SINGLETON_ID,
         )
         result = await self._session.execute(statement)
-        return bool(result.scalar_one())
+        value = result.scalar_one_or_none()
+        return bool(value)
 
     async def set_processing_paused(self, *, paused: bool) -> None:
         await self._ensure_singleton()
