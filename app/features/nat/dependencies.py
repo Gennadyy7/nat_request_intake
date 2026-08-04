@@ -26,6 +26,9 @@ from app.features.nat.services.persistence.batch_persistence import (
     BatchPersistenceService,
 )
 from app.features.nat.services.persistence.file_storage import FileStorageService
+from app.features.nat.services.processing.global_processing_service import (
+    GlobalProcessingService,
+)
 from app.features.nat.services.processing.intake_processing_service import (
     IntakeProcessingService,
 )
@@ -160,3 +163,9 @@ def get_intake_processing_service(
     uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
 ) -> IntakeProcessingService:
     return IntakeProcessingService(uow=uow)
+
+
+def get_global_processing_service(
+    uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
+) -> GlobalProcessingService:
+    return GlobalProcessingService(uow=uow)

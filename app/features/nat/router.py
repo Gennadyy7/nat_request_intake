@@ -16,6 +16,7 @@ from app.features.auth.schemas import User
 from app.features.nat.constants import ApiErrorCode, ResultProcessingGetStatus
 from app.features.nat.dependencies import (
     get_batch_query_service,
+    get_global_processing_service,
     get_intake_monitoring_query_service,
     get_intake_processing_service,
     get_intake_query_service,
@@ -51,8 +52,13 @@ from app.features.nat.schemas.intake_list import (
     NatIntakeListItem,
     NatIntakeRowErrorListResponse,
 )
-from app.features.nat.schemas.intake_monitoring import NatIntakeMonitoringListItem
-from app.features.nat.schemas.intake_processing import IntakeProcessingUpdate
+from app.features.nat.schemas.intake_monitoring import (
+    NatIntakeMonitoringListResponse,
+)
+from app.features.nat.schemas.intake_processing import (
+    GlobalProcessingState,
+    IntakeProcessingUpdate,
+)
 from app.features.nat.schemas.pagination import PaginatedResponse
 from app.features.nat.schemas.result_processing import NatResultProcessingDetail
 from app.features.nat.schemas.task_list import NatTaskDetail, NatTaskListItem
@@ -67,6 +73,9 @@ from app.features.nat.services.listing.result_processing_query_service import (
     ResultProcessingQueryService,
 )
 from app.features.nat.services.listing.task_query_service import TaskQueryService
+from app.features.nat.services.processing.global_processing_service import (
+    GlobalProcessingService,
+)
 from app.features.nat.services.processing.intake_processing_service import (
     IntakeProcessingService,
 )
@@ -149,7 +158,7 @@ async def list_intakes(
 
 @router.get(
     '/intakes/monitoring',
-    response_model=PaginatedResponse[NatIntakeMonitoringListItem],
+    response_model=NatIntakeMonitoringListResponse,
 )
 async def list_intakes_monitoring(
     _user: Annotated[User, Depends(get_user)],
@@ -163,12 +172,35 @@ async def list_intakes_monitoring(
     ],
     sort: Annotated[SortParams, Depends(get_nat_intake_sort_params)],
     pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
-) -> PaginatedResponse[NatIntakeMonitoringListItem]:
+) -> NatIntakeMonitoringListResponse:
     return await query_service.list_monitoring(
         filters=filters,
         sort=sort,
         pagination=pagination,
     )
+
+
+@router.get('/intakes/processing', response_model=GlobalProcessingState)
+async def get_global_processing(
+    _user: Annotated[User, Depends(get_user)],
+    processing_service: Annotated[
+        GlobalProcessingService,
+        Depends(get_global_processing_service),
+    ],
+) -> GlobalProcessingState:
+    return await processing_service.get_processing_paused()
+
+
+@router.patch('/intakes/processing', response_model=GlobalProcessingState)
+async def update_global_processing(
+    payload: IntakeProcessingUpdate,
+    _user: Annotated[User, Depends(get_user)],
+    processing_service: Annotated[
+        GlobalProcessingService,
+        Depends(get_global_processing_service),
+    ],
+) -> GlobalProcessingState:
+    return await processing_service.set_processing_paused(paused=payload.paused)
 
 
 @router.get('/intakes/{intake_id}', response_model=NatIntakeDetail)

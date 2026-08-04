@@ -13,6 +13,7 @@ from app.features.email.repositories import (
 from app.features.nat.repositories import (
     NatBatchRepository,
     NatDedupKeyRepository,
+    NatGlobalProcessingRepository,
     NatIntakeRepository,
     NatIntakeRowErrorRepository,
     NatResultProcessingTaskRepository,
@@ -29,6 +30,7 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_intakes: NatIntakeRepository | None = None
         self._nat_intake_row_errors: NatIntakeRowErrorRepository | None = None
         self._nat_batches: NatBatchRepository | None = None
+        self._nat_global_processing: NatGlobalProcessingRepository | None = None
         self._nat_tasks: NatTaskRepository | None = None
         self._nat_result_processing_tasks: NatResultProcessingTaskRepository | None = (
             None
@@ -72,6 +74,18 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
                 'UnitOfWork context is not active. Access attributes inside an "async with" block.'
             )
         return self._nat_batches
+
+    @property
+    def nat_global_processing(self) -> NatGlobalProcessingRepository:
+        if self._nat_global_processing is None:
+            logger.error(
+                'Attempted to access nat_global_processing repository '
+                'outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._nat_global_processing
 
     @property
     def nat_tasks(self) -> NatTaskRepository:
@@ -150,6 +164,7 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_intakes = NatIntakeRepository(self._session)
         self._nat_intake_row_errors = NatIntakeRowErrorRepository(self._session)
         self._nat_batches = NatBatchRepository(self._session)
+        self._nat_global_processing = NatGlobalProcessingRepository(self._session)
         self._nat_tasks = NatTaskRepository(self._session)
         self._nat_result_processing_tasks = NatResultProcessingTaskRepository(
             self._session,

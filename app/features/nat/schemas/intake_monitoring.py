@@ -6,6 +6,7 @@ from app.features.assomi.constants import AssomiTaskStatus
 from app.features.email.constants import EmailReplyStatus
 from app.features.nat.constants import NatResultProcessingStatus
 from app.features.nat.schemas.intake_list import NatIntakeListItem
+from app.features.nat.schemas.pagination import PaginationMeta
 
 
 class IntakeFileRowStats(BaseModel):
@@ -46,3 +47,9 @@ class NatIntakeMonitoringListItem(NatIntakeListItem):
     result_email_status: EmailReplyStatus | None = None
     result_processing: IntakeResultProcessingStats | None = None
     assomi: IntakeAssomiStats | None = None
+
+
+class NatIntakeMonitoringListResponse(BaseModel):
+    data: list[NatIntakeMonitoringListItem]
+    meta: PaginationMeta
+    global_processing_paused: bool

@@ -1,9 +1,11 @@
-from sqlalchemy import ColumnElement, asc, desc, or_
+from sqlalchemy import ColumnElement, asc, desc, exists, or_, select
 from sqlalchemy.orm import InstrumentedAttribute
 
 from app.features.assomi.models import AssomiTask
 from app.features.nat.models import (
+    GLOBAL_PROCESSING_SINGLETON_ID,
     NatBatch,
+    NatGlobalProcessing,
     NatIntake,
     NatIntakeRowError,
     NatResultProcessingTask,
@@ -22,6 +24,15 @@ from app.features.nat.query_params import (
 
 def escape_ilike_pattern(value: str) -> str:
     return value.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
+
+def global_processing_not_paused() -> ColumnElement[bool]:
+    return ~exists(
+        select(NatGlobalProcessing.id).where(
+            NatGlobalProcessing.id == GLOBAL_PROCESSING_SINGLETON_ID,
+            NatGlobalProcessing.processing_paused.is_(True),
+        )
+    )
 
 
 def build_intake_filter_clauses(

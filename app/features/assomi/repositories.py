@@ -19,7 +19,10 @@ from app.features.assomi.repository_records import AssomiTaskListRecord
 from app.features.nat.constants import NatResultProcessingStatus
 from app.features.nat.models import NatBatch, NatIntake, NatResultProcessingTask
 from app.features.nat.query_params import SortParams
-from app.features.nat.repository_query import order_by_sort_column
+from app.features.nat.repository_query import (
+    global_processing_not_paused,
+    order_by_sort_column,
+)
 
 
 class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
@@ -66,6 +69,7 @@ class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
                     has_spin_matched_path,
                     ~already_enqueued,
                     NatBatch.processing_paused.is_(False),
+                    global_processing_not_paused(),
                 ),
             )
             .on_conflict_do_nothing(index_elements=['aggregation_task_id'])
@@ -81,6 +85,7 @@ class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
             .where(
                 AssomiTask.status == AssomiTaskStatus.PENDING.value,
                 NatBatch.processing_paused.is_(False),
+                global_processing_not_paused(),
             )
             .order_by(AssomiTask.created_at.asc())
             .with_for_update(skip_locked=True)

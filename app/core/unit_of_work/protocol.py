@@ -9,6 +9,7 @@ from app.features.email.repositories import (
 from app.features.nat.repositories import (
     NatBatchRepository,
     NatDedupKeyRepository,
+    NatGlobalProcessingRepository,
     NatIntakeRepository,
     NatIntakeRowErrorRepository,
     NatResultProcessingTaskRepository,
@@ -25,6 +26,9 @@ class UnitOfWorkProtocol(Protocol):
 
     @property
     def nat_batches(self) -> NatBatchRepository: ...
+
+    @property
+    def nat_global_processing(self) -> NatGlobalProcessingRepository: ...
 
     @property
     def nat_tasks(self) -> NatTaskRepository: ...

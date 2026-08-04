@@ -284,6 +284,46 @@ class NatBatch(Base, TimestampMixin):
         )
 
 
+GLOBAL_PROCESSING_SINGLETON_ID = 1
+
+
+class NatGlobalProcessing(Base, TimestampMixin):
+    __tablename__ = 'nat_global_processing'
+
+    id: Mapped[int] = mapped_column(
+        Integer,
+        primary_key=True,
+        comment='Singleton primary key; always 1',
+    )
+
+    processing_paused: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text('false'),
+        comment=(
+            'When true, NAT dispatch, batch notify, and ASSOMI enqueue/claim '
+            'skip all batches; NAT poll continues for already sent tasks; '
+            'result-email skip is controlled by worker config'
+        ),
+    )
+
+    __table_args__ = (
+        {
+            'comment': (
+                'Singleton row controlling global pause of NAT intake processing'
+            ),
+        },
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f'NatGlobalProcessing('
+            f'id={self.id}, '
+            f'processing_paused={self.processing_paused})'
+        )
+
+
 class NatTask(Base, TimestampMixin):
     __tablename__ = 'nat_tasks'
 

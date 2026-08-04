@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
 from sqlalchemy import and_, case, delete, func, insert, or_, select, text, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement, Label
@@ -22,8 +23,10 @@ from app.features.nat.constants import (
 from app.features.nat.domain.deduplication_key import DeduplicationKey
 from app.features.nat.domain.transformed_row import TransformedRow
 from app.features.nat.models import (
+    GLOBAL_PROCESSING_SINGLETON_ID,
     NatBatch,
     NatDedupKey,
+    NatGlobalProcessing,
     NatIntake,
     NatIntakeRowError,
     NatResultProcessingTask,
@@ -46,6 +49,7 @@ from app.features.nat.repository_query import (
     build_result_processing_filter_clauses,
     build_result_processing_list_filter_clauses,
     build_task_filter_clauses,
+    global_processing_not_paused,
     intake_list_requires_batch_join,
     intake_sort_column,
     monitoring_requires_assomi_join,
@@ -519,6 +523,7 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
             .where(
                 NatBatch.notified_at.is_(None),
                 NatBatch.processing_paused.is_(False),
+                global_processing_not_paused(),
                 NatIntake.source == IntakeSource.NAT.value,
                 has_completed,
                 ~has_non_terminal,
@@ -634,6 +639,7 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
         ]
         if respect_processing_pause:
             conditions.append(NatBatch.processing_paused.is_(False))
+            conditions.append(global_processing_not_paused())
         statement = (
             select(NatBatch)
             .join(NatIntake, NatBatch.intake_id == NatIntake.id)
@@ -676,6 +682,49 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
         await self._session.execute(
             update(NatBatch)
             .where(NatBatch.id == batch_id)
+            .values(
+                processing_paused=paused,
+                updated_at=datetime.now(UTC),
+            )
+        )
+
+
+class NatGlobalProcessingRepository(SQLAlchemyRepository[NatGlobalProcessing, int]):
+    def __init__(self, session: AsyncSession) -> None:
+        super().__init__(model=NatGlobalProcessing, session=session)
+
+    async def _ensure_singleton(self) -> None:
+        statement = (
+            pg_insert(NatGlobalProcessing)
+            .values(
+                id=GLOBAL_PROCESSING_SINGLETON_ID,
+                processing_paused=False,
+            )
+            .on_conflict_do_nothing(index_elements=['id'])
+        )
+        await self._session.execute(statement)
+
+    async def get_singleton(self) -> NatGlobalProcessing:
+        await self._ensure_singleton()
+        statement = select(NatGlobalProcessing).where(
+            NatGlobalProcessing.id == GLOBAL_PROCESSING_SINGLETON_ID,
+        )
+        result = await self._session.execute(statement)
+        return result.scalar_one()
+
+    async def is_processing_paused(self) -> bool:
+        await self._ensure_singleton()
+        statement = select(NatGlobalProcessing.processing_paused).where(
+            NatGlobalProcessing.id == GLOBAL_PROCESSING_SINGLETON_ID,
+        )
+        result = await self._session.execute(statement)
+        return bool(result.scalar_one())
+
+    async def set_processing_paused(self, *, paused: bool) -> None:
+        await self._ensure_singleton()
+        await self._session.execute(
+            update(NatGlobalProcessing)
+            .where(NatGlobalProcessing.id == GLOBAL_PROCESSING_SINGLETON_ID)
             .values(
                 processing_paused=paused,
                 updated_at=datetime.now(UTC),
@@ -818,6 +867,7 @@ class NatTaskRepository(SQLAlchemyRepository[NatTask, UUID]):
                 NatTask.status.is_(None),
                 NatTask.error_message.is_(None),
                 NatBatch.processing_paused.is_(False),
+                global_processing_not_paused(),
                 NatIntake.source == IntakeSource.NAT.value,
             )
             .order_by(NatTask.created_at.asc())

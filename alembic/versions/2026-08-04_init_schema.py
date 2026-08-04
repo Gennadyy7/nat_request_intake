@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: fcf51cebd7e0
+Revision ID: c3f0a7c2944e
 Revises:
-Create Date: 2026-08-03 15:42:59.785782
+Create Date: 2026-08-04 11:54:24.052118
 
 """
 
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'fcf51cebd7e0'
+revision: str = 'c3f0a7c2944e'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -405,6 +405,36 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id', name=op.f('pk_nat_dedup_keys')),
         sa.UniqueConstraint('key_hash', name=op.f('uq_nat_dedup_keys_key_hash')),
         comment='Registered deduplication keys for idempotency window tracking',
+    )
+    op.create_table(
+        'nat_global_processing',
+        sa.Column(
+            'id',
+            sa.Integer(),
+            nullable=False,
+            comment='Singleton primary key; always 1',
+        ),
+        sa.Column(
+            'processing_paused',
+            sa.Boolean(),
+            server_default=sa.text('false'),
+            nullable=False,
+            comment='When true, NAT dispatch, batch notify, and ASSOMI enqueue/claim skip all batches; NAT poll continues for already sent tasks; result-email skip is controlled by worker config',
+        ),
+        sa.Column(
+            'created_at',
+            sa.DateTime(timezone=True),
+            server_default=sa.text('now()'),
+            nullable=False,
+        ),
+        sa.Column(
+            'updated_at',
+            sa.DateTime(timezone=True),
+            server_default=sa.text('now()'),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint('id', name=op.f('pk_nat_global_processing')),
+        comment='Singleton row controlling global pause of NAT intake processing',
     )
     op.create_table(
         'nat_intakes',
@@ -966,6 +996,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_nat_intakes_number'), table_name='nat_intakes')
     op.drop_index(op.f('ix_nat_intakes_id'), table_name='nat_intakes')
     op.drop_table('nat_intakes')
+    op.drop_table('nat_global_processing')
     op.drop_table('nat_dedup_keys')
     op.drop_table('email_senders')
     op.drop_index(
