@@ -39,6 +39,9 @@ class ValidationErrorCode(StrEnum):
     MISSING_FILENAME = 'MISSING_FILENAME'
     INVALID_FILE_FORMAT = 'INVALID_FILE_FORMAT'
     MANUAL_SPIN_CSV_REQUIRED = 'MANUAL_SPIN_CSV_REQUIRED'
+    MANUAL_ASSOMI_CSV_REQUIRED = 'MANUAL_ASSOMI_CSV_REQUIRED'
+    MANUAL_ASSOMI_NO_LOGINS = 'MANUAL_ASSOMI_NO_LOGINS'
+    MANUAL_ASSOMI_WRONG_FILE_KIND = 'MANUAL_ASSOMI_WRONG_FILE_KIND'
     EMPTY_FILE = 'EMPTY_FILE'
     TOO_MANY_ROWS = 'TOO_MANY_ROWS'
     INVALID_HEADERS = 'INVALID_HEADERS'
@@ -157,6 +160,7 @@ class IntakeStatus(StrEnum):
 class IntakeSource(StrEnum):
     NAT = 'nat'
     MANUAL_SPIN = 'manual_spin'
+    MANUAL_ASSOMI = 'manual_assomi'
 
 
 def is_file_level_intake_rejection(error_code: str | None) -> bool:

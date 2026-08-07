@@ -48,10 +48,17 @@ def _to_list_record(record: NatIntakeMonitoringListRecord) -> NatIntakeListRecor
     )
 
 
+def _is_manual_bypass_source(source: str) -> bool:
+    return source in {
+        IntakeSource.MANUAL_SPIN.value,
+        IntakeSource.MANUAL_ASSOMI.value,
+    }
+
+
 def _build_row_stats(
     record: NatIntakeMonitoringListRecord,
 ) -> IntakeFileRowStats | None:
-    if record.intake.source == IntakeSource.MANUAL_SPIN.value:
+    if _is_manual_bypass_source(record.intake.source):
         return None
     if record.batch_id is not None:
         assert record.batch_row_count is not None
@@ -86,7 +93,7 @@ def _build_row_stats(
 def _build_task_stats(
     record: NatIntakeMonitoringListRecord,
 ) -> IntakeNatTaskStats | None:
-    if record.intake.source == IntakeSource.MANUAL_SPIN.value:
+    if _is_manual_bypass_source(record.intake.source):
         return None
     if record.tasks_total is None:
         return None
@@ -108,6 +115,8 @@ def _build_task_stats(
 def _build_result_processing_stats(
     record: NatIntakeMonitoringListRecord,
 ) -> IntakeResultProcessingStats | None:
+    if record.intake.source == IntakeSource.MANUAL_ASSOMI.value:
+        return None
     if record.result_processing_status is None:
         return None
 

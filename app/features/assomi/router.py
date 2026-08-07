@@ -1,24 +1,37 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi_keycloak_middleware import get_user
+from pydantic import EmailStr
 
 from app.features.assomi.constants import AssomiApiErrorCode
-from app.features.assomi.dependencies import AssomiQueryServiceDep
+from app.features.assomi.dependencies import (
+    AssomiQueryServiceDep,
+    ManualAssomiEnrichServiceDep,
+)
 from app.features.assomi.list_dependencies import (
     get_assomi_task_filters,
     get_assomi_task_sort_params,
 )
 from app.features.assomi.messages import get_message
 from app.features.assomi.query_params import AssomiTaskFilters
-from app.features.assomi.schemas import AssomiTaskDetail, AssomiTaskListItem
+from app.features.assomi.schemas import (
+    AssomiTaskDetail,
+    AssomiTaskListItem,
+    ManualAssomiEnrichResponse,
+)
 from app.features.assomi.services.assomi_query_service import AssomiFileResolveResult
+from app.features.assomi.services.manual_assomi_enrich_service import (
+    ManualAssomiRejected,
+)
+from app.features.auth.dependencies import get_sender_email
 from app.features.auth.schemas import User
 from app.features.nat.list_dependencies import get_pagination_params
 from app.features.nat.pagination import PaginationParams
 from app.features.nat.query_params import SortParams
+from app.features.nat.schemas.intake import IntakeResponse
 from app.features.nat.schemas.pagination import PaginatedResponse
 
 router = APIRouter(prefix='/assomi', tags=['assomi'])
@@ -68,6 +81,35 @@ def _file_response_from_resolve_result(
         filename=descriptor.download_filename,
         media_type=descriptor.media_type,
     )
+
+
+@router.post(
+    '/manual-enrich',
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=ManualAssomiEnrichResponse,
+    responses={
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
+            'description': 'Uploaded file was rejected',
+            'model': IntakeResponse,
+        },
+    },
+)
+async def manual_assomi_enrich(
+    sender_email: Annotated[EmailStr, Depends(get_sender_email)],
+    service: ManualAssomiEnrichServiceDep,
+    file: Annotated[UploadFile, File()],
+) -> ManualAssomiEnrichResponse | JSONResponse:
+    result = await service.process(
+        filename=file.filename,
+        content=await file.read(),
+        sender_email=sender_email,
+    )
+    if isinstance(result, ManualAssomiRejected):
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content=result.response.model_dump(mode='json'),
+        )
+    return result.response
 
 
 @router.get(

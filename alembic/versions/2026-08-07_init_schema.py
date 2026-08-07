@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: c3f0a7c2944e
+Revision ID: b52427c9a935
 Revises:
-Create Date: 2026-08-04 11:54:24.052118
+Create Date: 2026-08-07 13:19:49.529135
 
 """
 
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'c3f0a7c2944e'
+revision: str = 'b52427c9a935'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -474,7 +474,7 @@ def upgrade() -> None:
             sa.String(length=32),
             server_default='nat',
             nullable=False,
-            comment='Intake source (nat or manual_spin)',
+            comment='Intake source (nat, manual_spin or manual_assomi)',
         ),
         sa.Column(
             'error_code',

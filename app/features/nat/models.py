@@ -73,7 +73,7 @@ class NatIntake(Base, TimestampMixin):
         default=IntakeSource.NAT.value,
         server_default=IntakeSource.NAT.value,
         index=True,
-        comment='Intake source (nat or manual_spin)',
+        comment='Intake source (nat, manual_spin or manual_assomi)',
     )
 
     error_code: Mapped[str | None] = mapped_column(

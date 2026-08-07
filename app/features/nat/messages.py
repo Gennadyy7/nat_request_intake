@@ -59,6 +59,15 @@ MESSAGES: dict[str, str] = {
     ValidationErrorCode.MANUAL_SPIN_CSV_REQUIRED: (
         'Неподдерживаемый формат файла. Для ручного сопоставления SPIN допустим CSV'
     ),
+    ValidationErrorCode.MANUAL_ASSOMI_CSV_REQUIRED: (
+        'Неподдерживаемый формат файла. Для ручного обогащения ASSOMI допустим CSV'
+    ),
+    ValidationErrorCode.MANUAL_ASSOMI_NO_LOGINS: (
+        'Файл не содержит ни одного логина для обогащения ASSOMI'
+    ),
+    ValidationErrorCode.MANUAL_ASSOMI_WRONG_FILE_KIND: (
+        'Загружен файл результата ASSOMI. Ожидается spin-matched CSV с логинами'  # noqa: RUF001
+    ),
     ValidationErrorCode.EMPTY_FILE: 'Файл не содержит данных',
     ValidationErrorCode.TOO_MANY_ROWS: (
         'Превышено максимально допустимое число строк в файле'
