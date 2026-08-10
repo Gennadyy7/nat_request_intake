@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi_keycloak_middleware import get_user
 from pydantic import EmailStr
@@ -24,7 +24,6 @@ from app.features.nat.dependencies import (
     get_result_processing_query_service,
     get_task_query_service,
 )
-from app.features.nat.form_dependencies import get_single_stage_only
 from app.features.nat.list_dependencies import (
     get_nat_batch_filters,
     get_nat_batch_sort_params,
@@ -101,7 +100,7 @@ async def intake_file(
     sender_email: Annotated[EmailStr, Depends(get_sender_email)],
     service: Annotated[IntakeService, Depends(get_intake_service)],
     file: Annotated[UploadFile, File()],
-    single_stage_only: Annotated[bool, Depends(get_single_stage_only)],
+    single_stage_only: Annotated[bool, Form()] = False,
 ) -> IntakeResponse | JSONResponse:
     content = await file.read()
     return await process_intake_upload(
