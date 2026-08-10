@@ -18,6 +18,7 @@ def to_intake_list_item(record: NatIntakeListRecord) -> NatIntakeListItem:
         message=get_message(error_code) if error_code is not None else None,
         batch_id=record.batch_id,
         processing_paused=record.processing_paused,
+        single_stage_only=record.single_stage_only,
         created_at=intake.created_at,
     )
 

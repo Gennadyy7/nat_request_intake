@@ -24,6 +24,7 @@ from app.features.nat.dependencies import (
     get_result_processing_query_service,
     get_task_query_service,
 )
+from app.features.nat.form_dependencies import get_single_stage_only
 from app.features.nat.list_dependencies import (
     get_nat_batch_filters,
     get_nat_batch_sort_params,
@@ -100,6 +101,7 @@ async def intake_file(
     sender_email: Annotated[EmailStr, Depends(get_sender_email)],
     service: Annotated[IntakeService, Depends(get_intake_service)],
     file: Annotated[UploadFile, File()],
+    single_stage_only: Annotated[bool, Depends(get_single_stage_only)],
 ) -> IntakeResponse | JSONResponse:
     content = await file.read()
     return await process_intake_upload(
@@ -109,6 +111,7 @@ async def intake_file(
         sender_email=sender_email,
         enforce_max_date_range=settings.NAT_WEB_INTAKE_ENFORCE_MAX_DATE_RANGE,
         enforce_past_date_range=(settings.NAT_WEB_INTAKE_ENFORCE_PAST_DATE_RANGE),
+        single_stage_only=single_stage_only,
     )
 
 

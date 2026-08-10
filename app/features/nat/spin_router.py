@@ -15,6 +15,7 @@ from app.features.nat.dependencies import (
     get_manual_spin_match_service,
     get_result_processing_query_service,
 )
+from app.features.nat.form_dependencies import get_single_stage_only
 from app.features.nat.list_dependencies import (
     get_nat_result_processing_filters,
     get_nat_result_processing_sort_params,
@@ -122,11 +123,13 @@ async def manual_spin_match(
         Depends(get_manual_spin_match_service),
     ],
     file: Annotated[UploadFile, File()],
+    single_stage_only: Annotated[bool, Depends(get_single_stage_only)],
 ) -> ManualSpinMatchResponse | JSONResponse:
     result = await service.process(
         filename=file.filename,
         content=await file.read(),
         sender_email=sender_email,
+        single_stage_only=single_stage_only,
     )
     if isinstance(result, ManualSpinRejected):
         return JSONResponse(

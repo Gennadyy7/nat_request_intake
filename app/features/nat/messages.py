@@ -152,6 +152,10 @@ MESSAGES: dict[str, str] = {
         'Заявку нельзя приостановить: отсутствует принятый пакет обработки'
     ),
     ApiErrorCode.BATCH_RESULT_ALREADY_EMAILED: ('Обработка заявки уже завершена'),
+    ApiErrorCode.INVALID_SINGLE_STAGE_ONLY: (
+        'Недопустимое значение флага single_stage_only. '
+        'Допустимо: true, false, 1, 0, yes, no, on, off'
+    ),
     ApiErrorCode.MANUAL_SPIN_MATCH_FAILED: (
         'Сервис SPIN отклонил запуск ручного сопоставления'
     ),

@@ -1,8 +1,8 @@
 """init schema
 
-Revision ID: b52427c9a935
+Revision ID: d451b0be91dd
 Revises:
-Create Date: 2026-08-07 13:19:49.529135
+Create Date: 2026-08-10 10:37:17.078076
 
 """
 
@@ -14,7 +14,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = 'b52427c9a935'
+revision: str = 'd451b0be91dd'
 down_revision: str | Sequence[str] | None = None
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
@@ -673,7 +673,14 @@ def upgrade() -> None:
             sa.Boolean(),
             server_default=sa.text('false'),
             nullable=False,
-            comment='When true, NAT dispatch, batch notify, and ASSOMI enqueue/claim skip this batch; NAT poll continues for already sent tasks; result-email skip is controlled by worker config',
+            comment='When true, NAT dispatch, batch notify, and ASSOMI enqueue/claim skip this batch; NAT poll continues for already sent tasks; result-email skip is controlled by worker config and by single_stage_only',
+        ),
+        sa.Column(
+            'single_stage_only',
+            sa.Boolean(),
+            server_default=sa.text('false'),
+            nullable=False,
+            comment='When true, run only the entry stage for this upload, then set processing_paused; result-email claim skips the batch until intent is cleared on unpause',
         ),
         sa.Column(
             'created_at',

@@ -45,6 +45,7 @@ def _to_list_record(record: NatIntakeMonitoringListRecord) -> NatIntakeListRecor
         intake=record.intake,
         batch_id=record.batch_id,
         processing_paused=record.processing_paused,
+        single_stage_only=record.single_stage_only,
     )
 
 

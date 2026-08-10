@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Literal
+from uuid import UUID
 
+from app.core.unit_of_work.protocol import UnitOfWorkProtocol
 from assomi_worker.app.core.config import settings
 from assomi_worker.app.core.logging import get_logger
 from assomi_worker.app.core.unit_of_work import unit_of_work
@@ -31,6 +33,21 @@ class WorkerCycleStats:
     completed: int = 0
     transient_errors: int = 0
     permanent_errors: int = 0
+
+
+async def maybe_pause_single_stage_batch(
+    uow: UnitOfWorkProtocol,
+    batch_id: UUID,
+) -> None:
+    batch = await uow.nat_batches.get_by_id(batch_id)
+    if batch is None:
+        return
+    if batch.single_stage_only and not batch.processing_paused:
+        await uow.nat_batches.set_processing_paused(batch_id, paused=True)
+        logger.info(
+            'Single-stage ASSOMI batch paused after terminal outcome: batch_id={}',
+            batch_id,
+        )
 
 
 class AssomiWorkerService:
@@ -107,9 +124,11 @@ class AssomiWorkerService:
                         f'{task.aggregation_task_id}'
                     ),
                 )
+                await maybe_pause_single_stage_batch(uow, task.nat_batch_id)
                 await uow.commit()
                 logger.error(
-                    'ASSOMI permanent failure: assomi_task_id={} reason=missing_aggregation_task',
+                    'ASSOMI permanent failure: assomi_task_id={} '
+                    'reason=missing_aggregation_task',
                     task.id,
                 )
                 return 'permanent'
@@ -120,9 +139,11 @@ class AssomiWorkerService:
                     task.id,
                     error_message='Completed aggregation task has no spin_matched_path',
                 )
+                await maybe_pause_single_stage_batch(uow, task.nat_batch_id)
                 await uow.commit()
                 logger.error(
-                    'ASSOMI permanent failure: assomi_task_id={} reason=no_spin_matched_path',
+                    'ASSOMI permanent failure: assomi_task_id={} '
+                    'reason=no_spin_matched_path',
                     task.id,
                 )
                 return 'permanent'
@@ -141,6 +162,7 @@ class AssomiWorkerService:
                             f'{storage_path}'
                         ),
                     )
+                    await maybe_pause_single_stage_batch(uow, task.nat_batch_id)
                     await uow.commit()
                     logger.error(
                         'ASSOMI permanent failure: assomi_task_id={} path={}',
@@ -157,6 +179,7 @@ class AssomiWorkerService:
                     task.id,
                     error_message=str(exc),
                 )
+                await maybe_pause_single_stage_batch(uow, task.nat_batch_id)
                 await uow.commit()
                 logger.error(
                     'ASSOMI permanent failure: assomi_task_id={} error={}',
@@ -183,6 +206,7 @@ class AssomiWorkerService:
                     found_count=0,
                     missing_count=0,
                 )
+                await maybe_pause_single_stage_batch(uow, task.nat_batch_id)
                 await uow.commit()
                 logger.info(
                     'ASSOMI task completed with empty logins: '
@@ -208,6 +232,7 @@ class AssomiWorkerService:
                     task.id,
                     error_message=result.message,
                 )
+                await maybe_pause_single_stage_batch(uow, task.nat_batch_id)
                 await uow.commit()
                 logger.error(
                     'ASSOMI permanent failure: assomi_task_id={} error={}',
@@ -231,6 +256,7 @@ class AssomiWorkerService:
                     found_count=found_count,
                     missing_count=missing_count,
                 )
+                await maybe_pause_single_stage_batch(uow, task.nat_batch_id)
                 await uow.commit()
                 logger.info(
                     'ASSOMI task completed: assomi_task_id={} batch_id={} '

@@ -82,6 +82,7 @@ class ManualSpinMatchService:
         filename: str | None,
         content: bytes,
         sender_email: EmailStr,
+        single_stage_only: bool = False,
     ) -> ManualSpinResult:
         intake = await self._create_intake(
             sender_email=sender_email,
@@ -113,6 +114,7 @@ class ManualSpinMatchService:
                 batch_id=batch_id,
                 result_processing_id=result_processing_id,
                 storage_path=storage_path,
+                single_stage_only=single_stage_only,
             )
             await self._uow.commit()
         except Exception:
@@ -141,6 +143,8 @@ class ManualSpinMatchService:
             )
 
         await self._uow.nat_batches.mark_notified(batch_id)
+        if single_stage_only:
+            await self._uow.nat_batches.set_processing_paused(batch_id, paused=True)
         await self._uow.commit()
         return ManualSpinAccepted(
             response=ManualSpinMatchResponse(
@@ -214,6 +218,7 @@ class ManualSpinMatchService:
         batch_id: UUID,
         result_processing_id: UUID,
         storage_path: str,
+        single_stage_only: bool = False,
     ) -> None:
         intake.status = IntakeStatus.ACCEPTED.value
         batch = NatBatch(
@@ -221,6 +226,7 @@ class ManualSpinMatchService:
             intake_id=intake.id,
             file_name=storage_path,
             row_count=0,
+            single_stage_only=single_stage_only,
         )
         await self._uow.nat_batches.create(batch)
         await self._uow.nat_tasks.create(

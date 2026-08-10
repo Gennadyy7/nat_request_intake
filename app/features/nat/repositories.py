@@ -143,7 +143,12 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
     ) -> Sequence[NatIntakeListRecord]:
         clauses = build_intake_filter_clauses(filters)
         statement = (
-            select(NatIntake, NatBatch.id, NatBatch.processing_paused)
+            select(
+                NatIntake,
+                NatBatch.id,
+                NatBatch.processing_paused,
+                NatBatch.single_stage_only,
+            )
             .outerjoin(NatBatch, NatBatch.intake_id == NatIntake.id)
             .order_by(order_by_sort_column(intake_sort_column(sort), sort.sort_order))
             .limit(limit)
@@ -157,8 +162,9 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 intake=intake,
                 batch_id=batch_id,
                 processing_paused=processing_paused,
+                single_stage_only=single_stage_only,
             )
-            for intake, batch_id, processing_paused in result.all()
+            for intake, batch_id, processing_paused, single_stage_only in result.all()
         ]
 
     async def count_monitoring_filtered(
@@ -225,6 +231,7 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 NatIntake,
                 NatBatch.id,
                 NatBatch.processing_paused,
+                NatBatch.single_stage_only,
                 NatBatch.row_count,
                 NatBatch.result_emailed_at,
                 rejected_row_count,
@@ -267,6 +274,7 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 intake=intake,
                 batch_id=batch_id,
                 processing_paused=processing_paused,
+                single_stage_only=single_stage_only,
                 batch_row_count=batch_row_count,
                 result_emailed_at=result_emailed_at,
                 rejected_row_count=int(rejected_row_count_value),
@@ -297,6 +305,7 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
                 intake,
                 batch_id,
                 processing_paused,
+                single_stage_only,
                 batch_row_count,
                 result_emailed_at,
                 rejected_row_count_value,
@@ -324,7 +333,12 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
         intake_id: UUID,
     ) -> NatIntakeListRecord | None:
         statement = (
-            select(NatIntake, NatBatch.id, NatBatch.processing_paused)
+            select(
+                NatIntake,
+                NatBatch.id,
+                NatBatch.processing_paused,
+                NatBatch.single_stage_only,
+            )
             .outerjoin(NatBatch, NatBatch.intake_id == NatIntake.id)
             .where(NatIntake.id == intake_id)
         )
@@ -332,11 +346,12 @@ class NatIntakeRepository(SQLAlchemyRepository[NatIntake, UUID]):
         row = result.one_or_none()
         if row is None:
             return None
-        intake, batch_id, processing_paused = row
+        intake, batch_id, processing_paused, single_stage_only = row
         return NatIntakeListRecord(
             intake=intake,
             batch_id=batch_id,
             processing_paused=processing_paused,
+            single_stage_only=single_stage_only,
         )
 
 
@@ -635,6 +650,7 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
         )
         conditions = [
             NatBatch.result_emailed_at.is_(None),
+            NatBatch.single_stage_only.is_(False),
             ready_for_result_email,
         ]
         if respect_processing_pause:
@@ -644,6 +660,59 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
             select(NatBatch)
             .join(NatIntake, NatBatch.intake_id == NatIntake.id)
             .where(*conditions)
+            .order_by(NatBatch.created_at.asc())
+            .with_for_update(skip_locked=True)
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
+        result = await self._session.execute(statement)
+        return list(result.scalars().all())
+
+    async def claim_for_single_stage_nat_stop_on_all_failed(
+        self,
+        limit: int | None,
+    ) -> Sequence[NatBatch]:
+        pending_dispatch = and_(
+            NatTask.status.is_(None),
+            NatTask.error_message.is_(None),
+        )
+        in_flight = NatTask.status.in_(NON_TERMINAL_NAT_STATUSES)
+        has_completed = (
+            select(NatTask.id)
+            .where(
+                NatTask.batch_id == NatBatch.id,
+                NatTask.status == NatTaskStatus.COMPLETED,
+            )
+            .correlate(NatBatch)
+            .exists()
+        )
+        has_non_terminal = (
+            select(NatTask.id)
+            .where(
+                NatTask.batch_id == NatBatch.id,
+                or_(pending_dispatch, in_flight),
+            )
+            .correlate(NatBatch)
+            .exists()
+        )
+        has_any_nat_task = (
+            select(NatTask.id)
+            .where(NatTask.batch_id == NatBatch.id)
+            .correlate(NatBatch)
+            .exists()
+        )
+        statement = (
+            select(NatBatch)
+            .join(NatIntake, NatBatch.intake_id == NatIntake.id)
+            .where(
+                NatBatch.single_stage_only.is_(True),
+                NatBatch.processing_paused.is_(False),
+                global_processing_not_paused(),
+                NatIntake.source == IntakeSource.NAT.value,
+                has_any_nat_task,
+                ~has_completed,
+                ~has_non_terminal,
+            )
             .order_by(NatBatch.created_at.asc())
             .with_for_update(skip_locked=True)
         )
@@ -679,13 +748,14 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
         return result.scalar_one_or_none()
 
     async def set_processing_paused(self, batch_id: UUID, *, paused: bool) -> None:
+        values: dict[str, bool | datetime] = {
+            'processing_paused': paused,
+            'updated_at': datetime.now(UTC),
+        }
+        if not paused:
+            values['single_stage_only'] = False
         await self._session.execute(
-            update(NatBatch)
-            .where(NatBatch.id == batch_id)
-            .values(
-                processing_paused=paused,
-                updated_at=datetime.now(UTC),
-            )
+            update(NatBatch).where(NatBatch.id == batch_id).values(**values)
         )
 
 

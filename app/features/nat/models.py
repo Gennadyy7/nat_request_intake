@@ -232,7 +232,20 @@ class NatBatch(Base, TimestampMixin):
         comment=(
             'When true, NAT dispatch, batch notify, and ASSOMI enqueue/claim '
             'skip this batch; NAT poll continues for already sent tasks; '
-            'result-email skip is controlled by worker config'
+            'result-email skip is controlled by worker config and by '
+            'single_stage_only'
+        ),
+    )
+
+    single_stage_only: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text('false'),
+        comment=(
+            'When true, run only the entry stage for this upload, then set '
+            'processing_paused; result-email claim skips the batch until '
+            'intent is cleared on unpause'
         ),
     )
 

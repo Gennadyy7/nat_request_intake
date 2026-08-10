@@ -24,6 +24,7 @@ class NatIntakeListItem(BaseModel):
     message: str | None = None
     batch_id: UUID | None = None
     processing_paused: bool | None = None
+    single_stage_only: bool | None = None
     created_at: datetime
 
 
@@ -38,6 +39,7 @@ class NatIntakeDetail(BaseModel):
     message: str | None = None
     batch_id: UUID | None = None
     processing_paused: bool | None = None
+    single_stage_only: bool | None = None
     created_at: datetime
 
 

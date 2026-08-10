@@ -28,6 +28,7 @@ from app.features.assomi.services.manual_assomi_enrich_service import (
 )
 from app.features.auth.dependencies import get_sender_email
 from app.features.auth.schemas import User
+from app.features.nat.form_dependencies import get_single_stage_only
 from app.features.nat.list_dependencies import get_pagination_params
 from app.features.nat.pagination import PaginationParams
 from app.features.nat.query_params import SortParams
@@ -98,11 +99,13 @@ async def manual_assomi_enrich(
     sender_email: Annotated[EmailStr, Depends(get_sender_email)],
     service: ManualAssomiEnrichServiceDep,
     file: Annotated[UploadFile, File()],
+    single_stage_only: Annotated[bool, Depends(get_single_stage_only)],
 ) -> ManualAssomiEnrichResponse | JSONResponse:
     result = await service.process(
         filename=file.filename,
         content=await file.read(),
         sender_email=sender_email,
+        single_stage_only=single_stage_only,
     )
     if isinstance(result, ManualAssomiRejected):
         return JSONResponse(

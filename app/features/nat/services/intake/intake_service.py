@@ -62,6 +62,7 @@ class IntakeService:
         sender_email: EmailStr,
         enforce_max_date_range: bool,
         enforce_past_date_range: bool,
+        single_stage_only: bool = False,
     ) -> IntakeResponse:
         display_file_name = filename or ''
         intake = await self._create_intake(
@@ -287,6 +288,7 @@ class IntakeService:
                 storage_path=storage_path,
                 row_count=total_data_rows,
                 transformed_rows=transformed_rows,
+                single_stage_only=single_stage_only,
             )
             if row_errors:
                 await self._persist_row_errors(intake.id, row_errors)

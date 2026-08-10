@@ -33,6 +33,7 @@ class NatIntakeListRecord:
     intake: NatIntake
     batch_id: UUID | None
     processing_paused: bool | None
+    single_stage_only: bool | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +53,7 @@ class NatIntakeMonitoringListRecord:
     intake: NatIntake
     batch_id: UUID | None
     processing_paused: bool | None
+    single_stage_only: bool | None
     batch_row_count: int | None
     result_emailed_at: datetime | None
     rejected_row_count: int

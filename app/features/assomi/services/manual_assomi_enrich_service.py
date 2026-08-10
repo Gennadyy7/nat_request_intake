@@ -66,6 +66,7 @@ class ManualAssomiEnrichService:
         filename: str | None,
         content: bytes,
         sender_email: EmailStr,
+        single_stage_only: bool = False,
     ) -> ManualAssomiResult:
         intake = await self._create_intake(
             sender_email=sender_email,
@@ -102,6 +103,7 @@ class ManualAssomiEnrichService:
                 result_processing_id=result_processing_id,
                 assomi_task_id=assomi_task_id,
                 storage_path=storage_path,
+                single_stage_only=single_stage_only,
             )
             await self._uow.commit()
         except Exception:
@@ -173,6 +175,7 @@ class ManualAssomiEnrichService:
         result_processing_id: UUID,
         assomi_task_id: UUID,
         storage_path: str,
+        single_stage_only: bool = False,
     ) -> None:
         now = datetime.now(UTC)
         intake.status = IntakeStatus.ACCEPTED.value
@@ -181,6 +184,7 @@ class ManualAssomiEnrichService:
             intake_id=intake.id,
             file_name=storage_path,
             row_count=0,
+            single_stage_only=single_stage_only,
         )
         await self._uow.nat_batches.create(batch)
         await self._uow.nat_tasks.create(
