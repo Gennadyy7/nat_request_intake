@@ -38,8 +38,13 @@ def global_processing_not_paused() -> ColumnElement[bool]:
 
 
 def _email_message_linked_to_intake() -> ColumnElement[bool]:
+    # correlate_except keeps email_messages in the EXISTS FROM even when the
+    # outer monitoring query already outerjoins EmailMessage (auto-correlation
+    # would otherwise strip the subquery FROM and raise InvalidRequestError).
     return exists(
-        select(EmailMessage.id).where(EmailMessage.nat_intake_id == NatIntake.id)
+        select(EmailMessage.id)
+        .where(EmailMessage.nat_intake_id == NatIntake.id)
+        .correlate_except(EmailMessage)
     )
 
 
