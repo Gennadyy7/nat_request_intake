@@ -7,7 +7,12 @@ from fastapi import HTTPException, Query, status
 from app.features.assomi.status_filter_parsing import (
     parse_assomi_monitoring_status_filter,
 )
-from app.features.nat.constants import ApiErrorCode, IntakeSource, IntakeStatus
+from app.features.nat.constants import (
+    ApiErrorCode,
+    IntakeChannel,
+    IntakeSource,
+    IntakeStatus,
+)
 from app.features.nat.messages import get_message
 from app.features.nat.pagination import (
     PaginationParams,
@@ -103,6 +108,8 @@ def get_nat_intake_filters(
     filter_status: Annotated[str | None, Query()] = None,
     filter_source: Annotated[str | None, Query()] = None,
     filter_processing_paused: Annotated[bool | None, Query()] = None,
+    filter_intake_channel: Annotated[str | None, Query()] = None,
+    filter_single_stage_only: Annotated[bool | None, Query()] = None,
 ) -> NatIntakeFilters:
     status_value: IntakeStatus | None = None
     if filter_status is not None:
@@ -132,6 +139,20 @@ def get_nat_intake_filters(
                     'allowed': [member.value for member in IntakeSource],
                 },
             ) from exc
+    intake_channel_value: IntakeChannel | None = None
+    if filter_intake_channel is not None:
+        try:
+            intake_channel_value = IntakeChannel(filter_intake_channel)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={
+                    'code': ApiErrorCode.INVALID_FILTER_INTAKE_CHANNEL,
+                    'message': get_message(ApiErrorCode.INVALID_FILTER_INTAKE_CHANNEL),
+                    'filter_intake_channel': filter_intake_channel,
+                    'allowed': [member.value for member in IntakeChannel],
+                },
+            ) from exc
     return NatIntakeFilters(
         intake_id=filter_intake_id,
         intake_number=filter_intake_number,
@@ -142,6 +163,8 @@ def get_nat_intake_filters(
         status=status_value,
         source=source_value,
         processing_paused=filter_processing_paused,
+        intake_channel=intake_channel_value,
+        single_stage_only=filter_single_stage_only,
     )
 
 
@@ -155,6 +178,8 @@ def get_nat_intake_monitoring_filters(
     filter_status: Annotated[str | None, Query()] = None,
     filter_source: Annotated[str | None, Query()] = None,
     filter_processing_paused: Annotated[bool | None, Query()] = None,
+    filter_intake_channel: Annotated[str | None, Query()] = None,
+    filter_single_stage_only: Annotated[bool | None, Query()] = None,
     filter_result_processing_status: Annotated[str | None, Query()] = None,
     filter_assomi_status: Annotated[str | None, Query()] = None,
 ) -> NatIntakeMonitoringFilters:
@@ -168,6 +193,8 @@ def get_nat_intake_monitoring_filters(
         filter_status=filter_status,
         filter_source=filter_source,
         filter_processing_paused=filter_processing_paused,
+        filter_intake_channel=filter_intake_channel,
+        filter_single_stage_only=filter_single_stage_only,
     )
     result_processing_filter = parse_result_processing_status_filter(
         filter_result_processing_status,
@@ -183,6 +210,8 @@ def get_nat_intake_monitoring_filters(
         status=base_filters.status,
         source=base_filters.source,
         processing_paused=base_filters.processing_paused,
+        intake_channel=base_filters.intake_channel,
+        single_stage_only=base_filters.single_stage_only,
         result_processing_status=result_processing_filter.eq_value,
         result_processing_status_is_null=result_processing_filter.is_null,
         assomi_status=assomi_filter.eq_value,

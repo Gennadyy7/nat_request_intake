@@ -2,6 +2,8 @@ from sqlalchemy import ColumnElement, asc, desc, exists, or_, select
 from sqlalchemy.orm import InstrumentedAttribute
 
 from app.features.assomi.models import AssomiTask
+from app.features.email.models import EmailMessage
+from app.features.nat.constants import IntakeChannel
 from app.features.nat.models import (
     GLOBAL_PROCESSING_SINGLETON_ID,
     NatBatch,
@@ -32,6 +34,12 @@ def global_processing_not_paused() -> ColumnElement[bool]:
             NatGlobalProcessing.id == GLOBAL_PROCESSING_SINGLETON_ID,
             NatGlobalProcessing.processing_paused.is_(True),
         )
+    )
+
+
+def _email_message_linked_to_intake() -> ColumnElement[bool]:
+    return exists(
+        select(EmailMessage.id).where(EmailMessage.nat_intake_id == NatIntake.id)
     )
 
 
@@ -67,11 +75,23 @@ def build_intake_filter_clauses(
                 NatBatch.processing_paused.is_(False),
             )
         )
+    if filters.intake_channel is IntakeChannel.EMAIL:
+        clauses.append(_email_message_linked_to_intake())
+    elif filters.intake_channel is IntakeChannel.WEB:
+        clauses.append(~_email_message_linked_to_intake())
+    if filters.single_stage_only is True:
+        clauses.append(NatBatch.id.is_not(None))
+        clauses.append(NatBatch.single_stage_only.is_(True))
+    elif filters.single_stage_only is False:
+        clauses.append(NatBatch.id.is_not(None))
+        clauses.append(NatBatch.single_stage_only.is_(False))
     return clauses
 
 
 def intake_list_requires_batch_join(filters: NatIntakeFilters) -> bool:
-    return filters.processing_paused is not None
+    return (
+        filters.processing_paused is not None or filters.single_stage_only is not None
+    )
 
 
 def monitoring_requires_result_processing_join(

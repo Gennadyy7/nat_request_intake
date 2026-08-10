@@ -134,6 +134,9 @@ MESSAGES: dict[str, str] = {
     ),
     ApiErrorCode.INVALID_FILTER_STATUS: 'Недопустимое значение фильтра статуса',
     ApiErrorCode.INVALID_FILTER_SOURCE: 'Недопустимое значение фильтра источника',
+    ApiErrorCode.INVALID_FILTER_INTAKE_CHANNEL: (
+        'Недопустимое значение фильтра канала поступления заявки'
+    ),
     ApiErrorCode.INVALID_FILTER_TASK_STATUS: (
         'Недопустимое значение фильтра статуса задачи. Допустимо: целое число или null'
     ),

@@ -5,6 +5,7 @@ from uuid import UUID
 
 from app.features.assomi.constants import AssomiTaskStatus
 from app.features.nat.constants import (
+    IntakeChannel,
     IntakeSource,
     IntakeStatus,
     NatResultProcessingStatus,
@@ -43,6 +44,8 @@ class NatIntakeFilters:
     status: IntakeStatus | None = None
     source: IntakeSource | None = None
     processing_paused: bool | None = None
+    intake_channel: IntakeChannel | None = None
+    single_stage_only: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
