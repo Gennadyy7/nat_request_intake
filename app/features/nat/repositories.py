@@ -748,6 +748,10 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
         return result.scalar_one_or_none()
 
     async def set_processing_paused(self, batch_id: UUID, *, paused: bool) -> None:
+        """Set per-batch pause. Unpause clears single_stage_only so NAT notify can
+        continue after an entry-stage auto-pause; a manual pause/unpause *before*
+        that auto-pause therefore drops single-stage intent (full pipeline follows).
+        """
         values: dict[str, bool | datetime] = {
             'processing_paused': paused,
             'updated_at': datetime.now(UTC),

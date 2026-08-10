@@ -142,6 +142,8 @@ class ManualSpinMatchService:
                 result_processing_id=result_processing_id,
             )
 
+        # SPIN is notified before pause is committed; ASSOMI enqueue checks pause only,
+        # so a very fast aggregation could start the next stage in that narrow window.
         await self._uow.nat_batches.mark_notified(batch_id)
         if single_stage_only:
             await self._uow.nat_batches.set_processing_paused(batch_id, paused=True)
