@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     SMTP_USE_STARTTLS: bool
 
     ASSOMI_BASE_DIR: str
+    # Required only when INTAKE_RESULT_EMAIL_ATTACHMENT=combined_xlsx.
+    NAT_UPLOAD_BASE_DIR: str | None = None
+    SPIN_AGGREGATED_BASE_DIR: str | None = None
+    NAT_RESULT_XLSX_MERGE_STAGE_FILES: bool | None = None
 
     @field_validator('ASSOMI_BASE_DIR', mode='before')
     @classmethod
@@ -66,6 +70,49 @@ class Settings(BaseSettings):
         if not path.is_absolute():
             raise ValueError('Base directory path must be an absolute path')
         return normalized
+
+    @field_validator(
+        'NAT_UPLOAD_BASE_DIR',
+        'SPIN_AGGREGATED_BASE_DIR',
+        mode='before',
+    )
+    @classmethod
+    def validate_optional_absolute_base_dir(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value.strip():
+            return None
+        normalized = value.strip()
+        path = Path(normalized)
+        if not path.is_absolute():
+            raise ValueError('Base directory path must be an absolute path')
+        return normalized
+
+    @model_validator(mode='after')
+    def validate_combined_xlsx_attachment_paths(self) -> Self:
+        if (
+            self.INTAKE_RESULT_EMAIL_ATTACHMENT
+            != IntakeResultEmailAttachment.COMBINED_XLSX
+        ):
+            return self
+
+        missing = [
+            name
+            for name, value in {
+                'NAT_UPLOAD_BASE_DIR': self.NAT_UPLOAD_BASE_DIR,
+                'SPIN_AGGREGATED_BASE_DIR': self.SPIN_AGGREGATED_BASE_DIR,
+                'NAT_RESULT_XLSX_MERGE_STAGE_FILES': (
+                    self.NAT_RESULT_XLSX_MERGE_STAGE_FILES
+                ),
+            }.items()
+            if value is None
+        ]
+        if missing:
+            raise ValueError(
+                'INTAKE_RESULT_EMAIL_ATTACHMENT=combined_xlsx requires '
+                f'{", ".join(missing)}'
+            )
+        return self
 
     @model_validator(mode='after')
     def validate_db_config(self) -> Self:

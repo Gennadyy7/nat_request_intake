@@ -34,5 +34,9 @@ async def build_results_xlsx_file(
                     cell.number_format = '@'
         workbook.save(destination)
 
-    await asyncio.to_thread(_write)
+    try:
+        await asyncio.to_thread(_write)
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
     return destination

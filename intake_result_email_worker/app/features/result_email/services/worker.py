@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from app.core.config import settings as app_settings
 from app.features.assomi.models import AssomiTask
 from app.features.nat.models import NatBatch, NatIntake, NatResultProcessingTask
 from app.features.nat.services.persistence.file_storage import FileStorageService
@@ -289,10 +288,23 @@ class IntakeResultEmailWorkerService:
         assomi_task: AssomiTask | None,
         aggregation_task: NatResultProcessingTask | None,
     ) -> _PreparedEmail:
+        nat_upload_base_dir = settings.NAT_UPLOAD_BASE_DIR
+        spin_aggregated_base_dir = settings.SPIN_AGGREGATED_BASE_DIR
+        merge_stage_files = settings.NAT_RESULT_XLSX_MERGE_STAGE_FILES
+        if (
+            nat_upload_base_dir is None
+            or spin_aggregated_base_dir is None
+            or merge_stage_files is None
+        ):
+            raise RuntimeError(
+                'combined_xlsx attachment requires NAT_UPLOAD_BASE_DIR, '
+                'SPIN_AGGREGATED_BASE_DIR, and NAT_RESULT_XLSX_MERGE_STAGE_FILES'
+            )
+
         storages = ResultFileStorages(
-            nat_upload=FileStorageService(base_dir=app_settings.NAT_UPLOAD_BASE_DIR),
+            nat_upload=FileStorageService(base_dir=nat_upload_base_dir),
             spin=FileStorageService(
-                base_dir=app_settings.SPIN_AGGREGATED_BASE_DIR,
+                base_dir=spin_aggregated_base_dir,
                 use_date_subdirectory=False,
             ),
             assomi=FileStorageService(
@@ -306,7 +318,7 @@ class IntakeResultEmailWorkerService:
             assomi_task=assomi_task,
             aggregation_task=aggregation_task,
             storages=storages,
-            merge_stage_files=app_settings.NAT_RESULT_XLSX_MERGE_STAGE_FILES,
+            merge_stage_files=merge_stage_files,
         )
         try:
             content = await _read_file_bytes(xlsx_path)
