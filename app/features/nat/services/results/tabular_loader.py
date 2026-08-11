@@ -29,12 +29,14 @@ def merge_csv_parts(paths: list[Path]) -> list[list[str]]:
     if not paths:
         return []
     merged: list[list[str]] = []
-    for index, path in enumerate(paths):
+    header_taken = False
+    for path in paths:
         rows = load_csv_rows(path)
         if not rows:
             continue
-        if index == 0:
+        if not header_taken:
             merged.extend(rows)
+            header_taken = True
             continue
         merged.extend(rows[1:])
     return merged
