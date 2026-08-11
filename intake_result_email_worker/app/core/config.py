@@ -4,6 +4,10 @@ from typing import Literal, Self
 from pydantic import EmailStr, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from intake_result_email_worker.app.features.result_email.constants import (
+    IntakeResultEmailAttachment,
+)
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -38,6 +42,7 @@ class Settings(BaseSettings):
     INTAKE_RESULT_EMAIL_ENABLED: bool
     INTAKE_RESULT_EMAIL_MAX_ATTACHMENT_BYTES: int = Field(ge=1)
     INTAKE_RESULT_EMAIL_RESPECT_PROCESSING_PAUSE: bool
+    INTAKE_RESULT_EMAIL_ATTACHMENT: IntakeResultEmailAttachment
 
     IMAP_SERVER: str
     IMAP_USER: str

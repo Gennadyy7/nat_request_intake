@@ -207,6 +207,9 @@ services:
     volumes:
       # Read ASSOMI CSV artifacts for email attachments (same tree as assomi_worker).
       - ${ASSOMI_HOST_DIR}:/app/data/assomi:ro
+      # combined_xlsx attachments also read NAT uploads and SPIN artifacts.
+      - nat_uploads:/app/backend/uploads/nat:ro
+      - ${SPIN_AGGREGATED_HOST_DIR}:/app/data/aggregated:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8005/health"]
       interval: 5s

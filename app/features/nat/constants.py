@@ -99,6 +99,15 @@ MEDIA_TYPE_BY_EXTENSION: Final[dict[AllowedFileExtension, str]] = {
 
 ZIP_DOWNLOAD_MEDIA_TYPE: Final[str] = 'application/zip'
 
+RESULT_SHEET_APPLICATION: Final[str] = 'Заявка'
+RESULT_SHEET_AGGREGATION: Final[str] = 'Агрегация'
+RESULT_SHEET_SPIN: Final[str] = 'SPIN'
+RESULT_SHEET_ASSOMI: Final[str] = 'ASSOMI'
+
+INTAKE_RESULTS_XLSX_MEDIA_TYPE: Final[str] = (
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+)
+
 
 TASK_FILTER_NULL_SENTINEL: Final[str] = 'null'
 
@@ -148,6 +157,7 @@ class ApiErrorCode(StrEnum):
     INVALID_SORT_ORDER = 'INVALID_SORT_ORDER'
     INTAKE_NOT_PAUSABLE = 'INTAKE_NOT_PAUSABLE'
     BATCH_RESULT_ALREADY_EMAILED = 'BATCH_RESULT_ALREADY_EMAILED'
+    INTAKE_RESULTS_NOT_READY = 'INTAKE_RESULTS_NOT_READY'
     MANUAL_SPIN_MATCH_FAILED = 'MANUAL_SPIN_MATCH_FAILED'
     MANUAL_SPIN_MATCH_UNAVAILABLE = 'MANUAL_SPIN_MATCH_UNAVAILABLE'
 

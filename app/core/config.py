@@ -70,6 +70,7 @@ class Settings(BaseSettings):
     NAT_UPLOAD_BASE_DIR: str
     SPIN_AGGREGATED_BASE_DIR: str
     ASSOMI_BASE_DIR: str
+    NAT_RESULT_XLSX_MERGE_STAGE_FILES: bool
     nat_upload_date_timezone_env: str = Field(
         validation_alias='NAT_UPLOAD_DATE_TIMEZONE',
     )

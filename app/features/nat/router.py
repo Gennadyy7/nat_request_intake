@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
@@ -5,6 +6,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi_keycloak_middleware import get_user
 from pydantic import EmailStr
+from starlette.background import BackgroundTask
 
 from app.core.config import settings
 from app.features.auth.dependencies import (
@@ -13,13 +15,18 @@ from app.features.auth.dependencies import (
     require_email_poller_service,
 )
 from app.features.auth.schemas import User
-from app.features.nat.constants import ApiErrorCode, ResultProcessingGetStatus
+from app.features.nat.constants import (
+    INTAKE_RESULTS_XLSX_MEDIA_TYPE,
+    ApiErrorCode,
+    ResultProcessingGetStatus,
+)
 from app.features.nat.dependencies import (
     get_batch_query_service,
     get_global_processing_service,
     get_intake_monitoring_query_service,
     get_intake_processing_service,
     get_intake_query_service,
+    get_intake_results_service,
     get_intake_service,
     get_result_processing_query_service,
     get_task_query_service,
@@ -80,8 +87,15 @@ from app.features.nat.services.processing.global_processing_service import (
 from app.features.nat.services.processing.intake_processing_service import (
     IntakeProcessingService,
 )
+from app.features.nat.services.results.intake_results_service import (
+    IntakeResultsService,
+)
 
 router = APIRouter(prefix='/nat', tags=['nat'])
+
+
+def _unlink_path(path: Path) -> None:
+    path.unlink(missing_ok=True)
 
 
 @router.post(
@@ -223,6 +237,59 @@ async def get_intake(
             },
         )
     return detail
+
+
+@router.get(
+    '/intakes/{intake_id}/results',
+    response_class=FileResponse,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            'description': 'Intake not found',
+        },
+        status.HTTP_409_CONFLICT: {
+            'description': 'Intake pipeline is not terminally completed yet',
+        },
+    },
+)
+async def download_intake_results(
+    intake_id: UUID,
+    _user: Annotated[User, Depends(get_user)],
+    results_service: Annotated[
+        IntakeResultsService,
+        Depends(get_intake_results_service),
+    ],
+) -> FileResponse:
+    result = await results_service.resolve_download(intake_id)
+    if result.status == 'intake_not_found':
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                'code': ApiErrorCode.INTAKE_NOT_FOUND,
+                'message': get_message(ApiErrorCode.INTAKE_NOT_FOUND),
+                'intake_id': str(intake_id),
+            },
+        )
+    if result.status == 'not_ready':
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                'code': ApiErrorCode.INTAKE_RESULTS_NOT_READY,
+                'message': get_message(ApiErrorCode.INTAKE_RESULTS_NOT_READY),
+                'intake_id': str(intake_id),
+            },
+        )
+
+    descriptor = result.descriptor
+    if descriptor is None:
+        raise RuntimeError(
+            'Intake results file descriptor is required when resolve status is ok'
+        )
+    return FileResponse(
+        path=descriptor.path,
+        filename=descriptor.download_filename,
+        media_type=INTAKE_RESULTS_XLSX_MEDIA_TYPE,
+        background=BackgroundTask(_unlink_path, descriptor.cleanup_path),
+    )
 
 
 @router.patch(

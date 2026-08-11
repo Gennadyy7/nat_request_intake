@@ -32,6 +32,9 @@ from app.features.nat.services.processing.global_processing_service import (
 from app.features.nat.services.processing.intake_processing_service import (
     IntakeProcessingService,
 )
+from app.features.nat.services.results.intake_results_service import (
+    IntakeResultsService,
+)
 from app.features.nat.services.transformation.transformation_service import (
     TransformationService,
 )
@@ -169,3 +172,34 @@ def get_global_processing_service(
     uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
 ) -> GlobalProcessingService:
     return GlobalProcessingService(uow=uow)
+
+
+def get_assomi_file_storage_service() -> FileStorageService:
+    return FileStorageService(
+        base_dir=settings.ASSOMI_BASE_DIR,
+        use_date_subdirectory=False,
+    )
+
+
+def get_intake_results_service(
+    uow: Annotated[UnitOfWorkProtocol, Depends(get_uow)],
+    nat_upload_storage: Annotated[
+        FileStorageService,
+        Depends(get_file_storage_service),
+    ],
+    spin_storage: Annotated[
+        FileStorageService,
+        Depends(get_manual_spin_file_storage_service),
+    ],
+    assomi_storage: Annotated[
+        FileStorageService,
+        Depends(get_assomi_file_storage_service),
+    ],
+) -> IntakeResultsService:
+    return IntakeResultsService(
+        uow=uow,
+        nat_upload_storage=nat_upload_storage,
+        spin_storage=spin_storage,
+        assomi_storage=assomi_storage,
+        merge_stage_files=settings.NAT_RESULT_XLSX_MERGE_STAGE_FILES,
+    )

@@ -5,10 +5,12 @@ from uuid import UUID
 
 from app.features.assomi.constants import AssomiTaskStatus
 from app.features.nat.constants import (
-    NON_TERMINAL_NAT_STATUSES,
     IntakeSource,
     NatResultProcessingStatus,
-    NatTaskStatus,
+)
+from app.features.nat.domain.pipeline_outcome import (
+    has_spin_matched_path,
+    is_nat_all_failed,
 )
 from intake_result_email_worker.app.features.result_email.messages import (
     AGGREGATION_NO_SPIN_REASON,
@@ -113,7 +115,7 @@ def classify_pipeline_outcome(
     if (
         aggregation_task is not None
         and aggregation_task.status == NatResultProcessingStatus.COMPLETED.value
-        and not _has_spin_matched_path(aggregation_task.output_files)
+        and not has_spin_matched_path(aggregation_task.output_files)
         and assomi_task is None
     ):
         return ResultEmailClassification(
@@ -121,7 +123,10 @@ def classify_pipeline_outcome(
             stage='aggregation_spin',
             reason=AGGREGATION_NO_SPIN_REASON,
         )
-    if source == IntakeSource.NAT.value and _is_nat_all_failed(nat_tasks):
+    if source == IntakeSource.NAT.value and is_nat_all_failed(
+        intake_source=source,
+        nat_tasks=nat_tasks,
+    ):
         return ResultEmailClassification(
             kind='failure',
             stage='nat',
@@ -157,30 +162,6 @@ def stage_label(stage: ResultEmailStage) -> str:
             return STAGE_LABEL_AGGREGATION_SPIN
         case 'assomi':
             return STAGE_LABEL_ASSOMI
-
-
-def _has_spin_matched_path(output_files: list[dict[str, object]]) -> bool:
-    for item in output_files:
-        raw_path = item.get('spin_matched_path')
-        if isinstance(raw_path, str) and raw_path.strip():
-            return True
-    return False
-
-
-def _is_nat_task_non_terminal(task: NatTaskLike) -> bool:
-    if task.status is None and task.error_message is None:
-        return True
-    if task.status is None:
-        return False
-    return task.status in NON_TERMINAL_NAT_STATUSES
-
-
-def _is_nat_all_failed(nat_tasks: Sequence[NatTaskLike]) -> bool:
-    if not nat_tasks:
-        return False
-    if any(_is_nat_task_non_terminal(task) for task in nat_tasks):
-        return False
-    return not any(task.status == NatTaskStatus.COMPLETED for task in nat_tasks)
 
 
 def _first_nat_error_message(nat_tasks: Sequence[NatTaskLike]) -> str:

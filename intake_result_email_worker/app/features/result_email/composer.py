@@ -1,11 +1,15 @@
 from email.message import EmailMessage
 import re
+from typing import Literal
 from uuid import UUID
 
 from intake_result_email_worker.app.features.result_email.classification import (
     ResultEmailClassification,
     ResultEmailContext,
     stage_label,
+)
+from intake_result_email_worker.app.features.result_email.constants import (
+    IntakeResultEmailAttachment,
 )
 from intake_result_email_worker.app.features.result_email.messages import (
     RESULT_SUBJECT_WHEN_MISSING,
@@ -14,6 +18,8 @@ from intake_result_email_worker.app.features.result_email.messages import (
 )
 
 _REPLY_PREFIX_RE = re.compile(r'^re:\s*', re.IGNORECASE)
+
+AttachmentKind = Literal['assomi_csv', 'combined_xlsx']
 
 
 def build_result_email_message(
@@ -24,6 +30,7 @@ def build_result_email_message(
     reply_to: str,
     attachment_bytes: bytes | None = None,
     attachment_filename: str | None = None,
+    attachment_kind: AttachmentKind | None = None,
     oversized_limit_bytes: int | None = None,
 ) -> EmailMessage:
     message = EmailMessage()
@@ -43,6 +50,7 @@ def build_result_email_message(
             classification=classification,
             reply_to=reply_to,
             has_attachment=attachment_bytes is not None,
+            attachment_kind=attachment_kind,
             oversized_limit_bytes=oversized_limit_bytes,
         ),
         charset='utf-8',
@@ -51,10 +59,14 @@ def build_result_email_message(
     if attachment_bytes is not None:
         if attachment_filename is None or not attachment_filename.strip():
             raise ValueError('Attachment filename is required when attaching bytes')
+        maintype, subtype = _attachment_mime_parts(
+            attachment_kind=attachment_kind,
+            attachment_filename=attachment_filename,
+        )
         message.add_attachment(
             attachment_bytes,
-            maintype='text',
-            subtype='csv',
+            maintype=maintype,
+            subtype=subtype,
             filename=attachment_filename,
         )
     return message
@@ -84,6 +96,7 @@ def build_result_email_body(
     classification: ResultEmailClassification,
     reply_to: str,
     has_attachment: bool,
+    attachment_kind: AttachmentKind | None,
     oversized_limit_bytes: int | None,
 ) -> str:
     lines = [
@@ -127,8 +140,30 @@ def build_result_email_body(
         return '\n'.join(lines)
 
     if has_attachment:
-        lines.append('CSV-файл ASSOMI во вложении.')
+        lines.append(_attachment_body_line(attachment_kind))
     return '\n'.join(lines)
+
+
+def _attachment_body_line(attachment_kind: AttachmentKind | None) -> str:
+    if attachment_kind == IntakeResultEmailAttachment.COMBINED_XLSX.value:
+        return 'XLSX-файл с результатами во вложении.'
+    return 'CSV-файл ASSOMI во вложении.'
+
+
+def _attachment_mime_parts(
+    *,
+    attachment_kind: AttachmentKind | None,
+    attachment_filename: str,
+) -> tuple[str, str]:
+    if (
+        attachment_kind == IntakeResultEmailAttachment.COMBINED_XLSX.value
+        or attachment_filename.lower().endswith('.xlsx')
+    ):
+        return (
+            'application',
+            'vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+    return 'text', 'csv'
 
 
 def _format_batch_id(batch_id: UUID) -> str:

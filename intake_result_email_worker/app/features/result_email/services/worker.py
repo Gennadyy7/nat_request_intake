@@ -3,6 +3,15 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from app.core.config import settings as app_settings
+from app.features.assomi.models import AssomiTask
+from app.features.nat.models import NatBatch, NatIntake, NatResultProcessingTask
+from app.features.nat.services.persistence.file_storage import FileStorageService
+from app.features.nat.services.results.builder import build_intake_results_xlsx_path
+from app.features.nat.services.results.sheet_plan import (
+    ResultFileStorages,
+    build_download_filename,
+)
 from intake_result_email_worker.app.core.config import settings
 from intake_result_email_worker.app.core.logging import get_logger
 from intake_result_email_worker.app.core.unit_of_work import unit_of_work
@@ -17,7 +26,11 @@ from intake_result_email_worker.app.features.result_email.classification import 
     classify_pipeline_outcome,
 )
 from intake_result_email_worker.app.features.result_email.composer import (
+    AttachmentKind,
     build_result_email_message,
+)
+from intake_result_email_worker.app.features.result_email.constants import (
+    IntakeResultEmailAttachment,
 )
 from intake_result_email_worker.app.features.result_email.messages import (
     ASSOMI_FILE_MISSING_REASON,
@@ -45,6 +58,7 @@ class _PreparedEmail:
     classification: ResultEmailClassification
     attachment_bytes: bytes | None
     attachment_filename: str | None
+    attachment_kind: AttachmentKind | None
     oversized_limit_bytes: int | None
 
 
@@ -145,6 +159,10 @@ class IntakeResultEmailWorkerService:
             prepared = await self._prepare_email(
                 context=context,
                 classification=classification,
+                intake=intake,
+                batch=batch,
+                assomi_task=assomi_task,
+                aggregation_task=aggregation_task,
             )
             mime_message = build_result_email_message(
                 context=prepared.context,
@@ -153,6 +171,7 @@ class IntakeResultEmailWorkerService:
                 reply_to=str(settings.EMAIL_REPLY_TO),
                 attachment_bytes=prepared.attachment_bytes,
                 attachment_filename=prepared.attachment_filename,
+                attachment_kind=prepared.attachment_kind,
                 oversized_limit_bytes=prepared.oversized_limit_bytes,
             )
             try:
@@ -184,6 +203,10 @@ class IntakeResultEmailWorkerService:
         *,
         context: ResultEmailContext,
         classification: ResultEmailClassification,
+        intake: NatIntake,
+        batch: NatBatch,
+        assomi_task: AssomiTask | None,
+        aggregation_task: NatResultProcessingTask | None,
     ) -> _PreparedEmail:
         if classification.kind != 'success':
             return _PreparedEmail(
@@ -191,7 +214,21 @@ class IntakeResultEmailWorkerService:
                 classification=classification,
                 attachment_bytes=None,
                 attachment_filename=None,
+                attachment_kind=None,
                 oversized_limit_bytes=None,
+            )
+
+        if (
+            settings.INTAKE_RESULT_EMAIL_ATTACHMENT
+            == IntakeResultEmailAttachment.COMBINED_XLSX
+        ):
+            return await self._prepare_combined_xlsx_email(
+                context=context,
+                classification=classification,
+                intake=intake,
+                batch=batch,
+                assomi_task=assomi_task,
+                aggregation_task=aggregation_task,
             )
 
         artifact = resolve_assomi_artifact(
@@ -210,6 +247,7 @@ class IntakeResultEmailWorkerService:
                     ),
                     attachment_bytes=None,
                     attachment_filename=None,
+                    attachment_kind=None,
                     oversized_limit_bytes=None,
                 )
             case ArtifactStatus.OVERSIZED:
@@ -223,6 +261,7 @@ class IntakeResultEmailWorkerService:
                     ),
                     attachment_bytes=None,
                     attachment_filename=None,
+                    attachment_kind=None,
                     oversized_limit_bytes=(
                         settings.INTAKE_RESULT_EMAIL_MAX_ATTACHMENT_BYTES
                     ),
@@ -236,8 +275,70 @@ class IntakeResultEmailWorkerService:
                     classification=classification,
                     attachment_bytes=content,
                     attachment_filename=artifact.filename,
+                    attachment_kind=IntakeResultEmailAttachment.ASSOMI_CSV.value,
                     oversized_limit_bytes=None,
                 )
+
+    async def _prepare_combined_xlsx_email(
+        self,
+        *,
+        context: ResultEmailContext,
+        classification: ResultEmailClassification,
+        intake: NatIntake,
+        batch: NatBatch,
+        assomi_task: AssomiTask | None,
+        aggregation_task: NatResultProcessingTask | None,
+    ) -> _PreparedEmail:
+        storages = ResultFileStorages(
+            nat_upload=FileStorageService(base_dir=app_settings.NAT_UPLOAD_BASE_DIR),
+            spin=FileStorageService(
+                base_dir=app_settings.SPIN_AGGREGATED_BASE_DIR,
+                use_date_subdirectory=False,
+            ),
+            assomi=FileStorageService(
+                base_dir=settings.ASSOMI_BASE_DIR,
+                use_date_subdirectory=False,
+            ),
+        )
+        xlsx_path = await build_intake_results_xlsx_path(
+            intake=intake,
+            batch=batch,
+            assomi_task=assomi_task,
+            aggregation_task=aggregation_task,
+            storages=storages,
+            merge_stage_files=app_settings.NAT_RESULT_XLSX_MERGE_STAGE_FILES,
+        )
+        try:
+            content = await _read_file_bytes(xlsx_path)
+        finally:
+            xlsx_path.unlink(missing_ok=True)
+
+        attachment_filename = build_download_filename(
+            intake_number=int(intake.number),
+        )
+        if len(content) > settings.INTAKE_RESULT_EMAIL_MAX_ATTACHMENT_BYTES:
+            return _PreparedEmail(
+                context=context,
+                classification=ResultEmailClassification(
+                    kind='success_oversized',
+                    found_count=classification.found_count,
+                    missing_count=classification.missing_count,
+                    output_path=classification.output_path,
+                ),
+                attachment_bytes=None,
+                attachment_filename=None,
+                attachment_kind=None,
+                oversized_limit_bytes=settings.INTAKE_RESULT_EMAIL_MAX_ATTACHMENT_BYTES,
+            )
+
+        return _PreparedEmail(
+            context=context,
+            classification=classification,
+            attachment_bytes=content,
+            attachment_filename=attachment_filename,
+            attachment_kind=IntakeResultEmailAttachment.COMBINED_XLSX.value,
+            oversized_limit_bytes=None,
+        )
 
 
 async def _read_file_bytes(path: Path) -> bytes:
