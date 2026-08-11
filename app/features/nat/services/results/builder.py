@@ -3,6 +3,7 @@ from pathlib import Path
 
 from app.features.assomi.models import AssomiTask
 from app.features.nat.models import NatBatch, NatIntake, NatResultProcessingTask
+from app.features.nat.services.results.errors import IntakeResultsEmptyError
 from app.features.nat.services.results.sheet_plan import (
     ResultFileStorages,
     SheetKind,
@@ -35,6 +36,10 @@ async def build_intake_results_xlsx_path(
         storages=storages,
         merge_stage_files=merge_stage_files,
     )
+    if not sheet_specs:
+        raise IntakeResultsEmptyError(
+            'No readable pipeline artifacts available for intake results workbook'
+        )
     resolved_sheets = await asyncio.gather(
         *[
             _resolve_sheet_rows(

@@ -7,6 +7,7 @@ from app.features.assomi.models import AssomiTask
 from app.features.nat.models import NatBatch, NatIntake, NatResultProcessingTask
 from app.features.nat.services.persistence.file_storage import FileStorageService
 from app.features.nat.services.results.builder import build_intake_results_xlsx_path
+from app.features.nat.services.results.errors import IntakeResultsEmptyError
 from app.features.nat.services.results.sheet_plan import (
     ResultFileStorages,
     build_download_filename,
@@ -33,6 +34,7 @@ from intake_result_email_worker.app.features.result_email.constants import (
 )
 from intake_result_email_worker.app.features.result_email.messages import (
     ASSOMI_FILE_MISSING_REASON,
+    COMBINED_XLSX_EMPTY_REASON,
 )
 from intake_result_email_worker.app.features.result_email.smtp.client import (
     SmtpClientError,
@@ -312,14 +314,28 @@ class IntakeResultEmailWorkerService:
                 use_date_subdirectory=False,
             ),
         )
-        xlsx_path = await build_intake_results_xlsx_path(
-            intake=intake,
-            batch=batch,
-            assomi_task=assomi_task,
-            aggregation_task=aggregation_task,
-            storages=storages,
-            merge_stage_files=merge_stage_files,
-        )
+        try:
+            xlsx_path = await build_intake_results_xlsx_path(
+                intake=intake,
+                batch=batch,
+                assomi_task=assomi_task,
+                aggregation_task=aggregation_task,
+                storages=storages,
+                merge_stage_files=merge_stage_files,
+            )
+        except IntakeResultsEmptyError:
+            return _PreparedEmail(
+                context=context,
+                classification=ResultEmailClassification(
+                    kind='failure',
+                    stage='assomi',
+                    reason=COMBINED_XLSX_EMPTY_REASON,
+                ),
+                attachment_bytes=None,
+                attachment_filename=None,
+                attachment_kind=None,
+                oversized_limit_bytes=None,
+            )
         try:
             content = await _read_file_bytes(xlsx_path)
         finally:

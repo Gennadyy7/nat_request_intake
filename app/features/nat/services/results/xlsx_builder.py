@@ -12,6 +12,9 @@ async def build_results_xlsx_file(
     *,
     sheets: Sequence[tuple[str, list[list[str]]]],
 ) -> Path:
+    if not sheets:
+        raise ValueError('At least one worksheet is required to build results XLSX')
+
     with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as handle:
         destination = Path(handle.name)
 

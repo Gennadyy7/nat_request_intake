@@ -130,6 +130,9 @@ MESSAGES: dict[str, str] = {
         'Пост-обработка пакета ещё не завершена'
     ),
     ApiErrorCode.INTAKE_RESULTS_NOT_READY: 'Результаты заявки ещё не готовы',
+    ApiErrorCode.INTAKE_RESULTS_EMPTY: (
+        'Нет доступных файлов результатов для формирования выгрузки'
+    ),
     ApiErrorCode.RESULT_PROCESSING_FILE_NOT_FOUND: (
         'Файл результата пост-обработки не найден'
     ),

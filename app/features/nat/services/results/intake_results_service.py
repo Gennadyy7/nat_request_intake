@@ -10,12 +10,13 @@ from app.features.nat.domain.pipeline_outcome import is_pipeline_terminal
 from app.features.nat.models import NatBatch, NatResultProcessingTask, NatTask
 from app.features.nat.services.persistence.file_storage import FileStorageService
 from app.features.nat.services.results.builder import build_intake_results_xlsx_path
+from app.features.nat.services.results.errors import IntakeResultsEmptyError
 from app.features.nat.services.results.sheet_plan import (
     ResultFileStorages,
     build_download_filename,
 )
 
-IntakeResultsResolveStatus = Literal['ok', 'intake_not_found', 'not_ready']
+IntakeResultsResolveStatus = Literal['ok', 'intake_not_found', 'not_ready', 'empty']
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,14 +70,18 @@ class IntakeResultsService:
         ):
             return IntakeResultsResolveResult(status='not_ready')
 
-        xlsx_path = await build_intake_results_xlsx_path(
-            intake=intake,
-            batch=batch,
-            assomi_task=assomi_task,
-            aggregation_task=aggregation_task,
-            storages=self._storages,
-            merge_stage_files=self._merge_stage_files,
-        )
+        try:
+            xlsx_path = await build_intake_results_xlsx_path(
+                intake=intake,
+                batch=batch,
+                assomi_task=assomi_task,
+                aggregation_task=aggregation_task,
+                storages=self._storages,
+                merge_stage_files=self._merge_stage_files,
+            )
+        except IntakeResultsEmptyError:
+            return IntakeResultsResolveResult(status='empty')
+
         return IntakeResultsResolveResult(
             status='ok',
             descriptor=IntakeResultsFileDescriptor(

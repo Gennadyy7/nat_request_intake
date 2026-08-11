@@ -3,6 +3,9 @@ NAT_ALL_FAILED_FALLBACK = 'Все задачи NAT завершились без
 ASSOMI_FILE_MISSING_REASON = (
     'Файл результата ASSOMI отсутствует или недоступен на диске'
 )
+COMBINED_XLSX_EMPTY_REASON = (
+    'Нет доступных файлов результатов для формирования выгрузки'
+)
 
 STAGE_LABEL_NAT = 'NAT'
 STAGE_LABEL_AGGREGATION_SPIN = 'Агрегация / SPIN'

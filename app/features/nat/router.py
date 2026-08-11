@@ -244,7 +244,7 @@ async def get_intake(
     response_class=FileResponse,
     responses={
         status.HTTP_404_NOT_FOUND: {
-            'description': 'Intake not found',
+            'description': 'Intake not found or results artifacts unavailable',
         },
         status.HTTP_409_CONFLICT: {
             'description': 'Intake pipeline is not terminally completed yet',
@@ -275,6 +275,15 @@ async def download_intake_results(
             detail={
                 'code': ApiErrorCode.INTAKE_RESULTS_NOT_READY,
                 'message': get_message(ApiErrorCode.INTAKE_RESULTS_NOT_READY),
+                'intake_id': str(intake_id),
+            },
+        )
+    if result.status == 'empty':
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                'code': ApiErrorCode.INTAKE_RESULTS_EMPTY,
+                'message': get_message(ApiErrorCode.INTAKE_RESULTS_EMPTY),
                 'intake_id': str(intake_id),
             },
         )

@@ -48,16 +48,16 @@ def build_sheet_plan(
     storages: ResultFileStorages,
     merge_stage_files: bool,
 ) -> list[SheetSpec]:
-    if intake.status == IntakeStatus.REJECTED.value and batch is None:
-        return [
+    specs: list[SheetSpec] = []
+    if intake.status == IntakeStatus.REJECTED.value:
+        specs.append(
             SheetSpec(
                 title=RESULT_SHEET_APPLICATION,
                 kind=SheetKind.REJECTION_METADATA,
                 paths=(),
             )
-        ]
+        )
 
-    specs: list[SheetSpec] = []
     source = IntakeSource(intake.source)
 
     if source == IntakeSource.NAT and batch is not None:
