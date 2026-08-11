@@ -60,28 +60,18 @@ class Settings(BaseSettings):
     SPIN_AGGREGATED_BASE_DIR: str | None = None
     NAT_RESULT_XLSX_MERGE_STAGE_FILES: bool | None = None
 
-    @field_validator('ASSOMI_BASE_DIR', mode='before')
-    @classmethod
-    def validate_absolute_base_dir(cls, value: object) -> str:
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError('Base directory path must be a non-empty absolute path')
-        normalized = value.strip()
-        path = Path(normalized)
-        if not path.is_absolute():
-            raise ValueError('Base directory path must be an absolute path')
-        return normalized
-
     @field_validator(
+        'ASSOMI_BASE_DIR',
         'NAT_UPLOAD_BASE_DIR',
         'SPIN_AGGREGATED_BASE_DIR',
         mode='before',
     )
     @classmethod
-    def validate_optional_absolute_base_dir(cls, value: object) -> str | None:
+    def validate_absolute_base_dir(cls, value: object) -> str | None:
         if value is None:
             return None
         if not isinstance(value, str) or not value.strip():
-            return None
+            raise ValueError('Base directory path must be a non-empty absolute path')
         normalized = value.strip()
         path = Path(normalized)
         if not path.is_absolute():
