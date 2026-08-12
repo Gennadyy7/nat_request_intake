@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.storage_path_validation import normalize_absolute_base_dir
 from app.features.nat.constants import NatIpFieldName
 
 
@@ -159,17 +160,7 @@ class Settings(BaseSettings):
     )
     @classmethod
     def validate_absolute_base_dir(cls, value: object) -> str:
-        if not isinstance(value, str):
-            raise ValueError('Base directory path must be a string')
-        if not value:
-            raise ValueError('Base directory path must not be empty')
-        if value != value.strip():
-            raise ValueError(
-                'Base directory path must not contain leading or trailing whitespace'
-            )
-        if not value.startswith('/'):
-            raise ValueError('Base directory path must be an absolute path')
-        return value
+        return normalize_absolute_base_dir(value)
 
     @field_validator('APP_ROOT_PATH', mode='before')
     @classmethod

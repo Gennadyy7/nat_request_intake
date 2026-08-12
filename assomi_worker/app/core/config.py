@@ -1,10 +1,11 @@
 from functools import cached_property
-from pathlib import Path
 from typing import Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.core.storage_path_validation import normalize_absolute_base_dir
 
 
 class Settings(BaseSettings):
@@ -82,13 +83,7 @@ class Settings(BaseSettings):
     @field_validator('ASSOMI_BASE_DIR', 'SPIN_AGGREGATED_BASE_DIR', mode='before')
     @classmethod
     def validate_absolute_base_dir(cls, value: object) -> str:
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError('Base directory path must be a non-empty absolute path')
-        normalized = value.strip()
-        path = Path(normalized)
-        if not path.is_absolute():
-            raise ValueError('Base directory path must be an absolute path')
-        return normalized
+        return normalize_absolute_base_dir(value)
 
     @model_validator(mode='after')
     def validate_db_config(self) -> Self:

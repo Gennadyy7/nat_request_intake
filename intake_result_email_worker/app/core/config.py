@@ -1,9 +1,9 @@
-from pathlib import Path
 from typing import Literal, Self
 
 from pydantic import EmailStr, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.storage_path_validation import normalize_optional_absolute_base_dir
 from intake_result_email_worker.app.features.result_email.constants import (
     IntakeResultEmailAttachment,
 )
@@ -68,15 +68,7 @@ class Settings(BaseSettings):
     )
     @classmethod
     def validate_absolute_base_dir(cls, value: object) -> str | None:
-        if value is None:
-            return None
-        if not isinstance(value, str) or not value.strip():
-            raise ValueError('Base directory path must be a non-empty absolute path')
-        normalized = value.strip()
-        path = Path(normalized)
-        if not path.is_absolute():
-            raise ValueError('Base directory path must be an absolute path')
-        return normalized
+        return normalize_optional_absolute_base_dir(value)
 
     @model_validator(mode='after')
     def validate_combined_xlsx_attachment_paths(self) -> Self:
