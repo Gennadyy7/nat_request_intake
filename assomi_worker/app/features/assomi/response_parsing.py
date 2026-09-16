@@ -9,8 +9,8 @@ class AssomiAbonent:
     contractnum: str
     login: str
     fio: str
-    service_adress: str
-    registration_adress: str
+    service_address: str
+    registration_address: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,8 +101,8 @@ def _find_abonents(root: ET.Element) -> list[AssomiAbonent]:
                 contractnum=_child_text(abonent, 'contractnum'),
                 login=_child_text(abonent, 'login'),
                 fio=_child_text(abonent, 'fio'),
-                service_adress=_child_text(abonent, 'service_adress'),
-                registration_adress=_child_text(abonent, 'registration_adress'),
+                service_address=_child_text(abonent, 'service_adress'),
+                registration_address=_child_text(abonent, 'registration_address'),
             )
         )
     return abonents

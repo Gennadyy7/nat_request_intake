@@ -23,8 +23,8 @@ class AssomiCsvRow:
     contractnum: str
     login: str
     fio: str
-    service_adress: str
-    registration_adress: str
+    service_address: str
+    registration_address: str
 
 
 def collect_spin_matched_paths(output_files: list[dict[str, object]]) -> list[str]:
@@ -99,8 +99,8 @@ def build_assomi_rows(
                     contractnum=ASSOMI_MISSING_FIELD_PLACEHOLDER,
                     login=spin_login,
                     fio=ASSOMI_MISSING_FIELD_PLACEHOLDER,
-                    service_adress=ASSOMI_MISSING_FIELD_PLACEHOLDER,
-                    registration_adress=ASSOMI_MISSING_FIELD_PLACEHOLDER,
+                    service_address=ASSOMI_MISSING_FIELD_PLACEHOLDER,
+                    registration_address=ASSOMI_MISSING_FIELD_PLACEHOLDER,
                 )
             )
             continue
@@ -110,8 +110,10 @@ def build_assomi_rows(
                 contractnum=_value_or_placeholder(abonent.contractnum),
                 login=spin_login,
                 fio=_value_or_placeholder(abonent.fio),
-                service_adress=_value_or_placeholder(abonent.service_adress),
-                registration_adress=_value_or_placeholder(abonent.registration_adress),
+                service_address=_value_or_placeholder(abonent.service_address),
+                registration_address=_value_or_placeholder(
+                    abonent.registration_address
+                ),
             )
         )
     return rows, found, missing
@@ -136,8 +138,8 @@ async def write_assomi_csv(
                         row.contractnum,
                         row.login,
                         row.fio,
-                        row.service_adress,
-                        row.registration_adress,
+                        row.service_address,
+                        row.registration_address,
                     ]
                 )
 
