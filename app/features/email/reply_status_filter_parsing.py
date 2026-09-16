@@ -26,7 +26,7 @@ def parse_reply_status_filter(raw: str | None) -> ReplyStatusFilter:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
-                'error_code': EmailApiErrorCode.INVALID_FILTER_REPLY_STATUS,
+                'code': EmailApiErrorCode.INVALID_FILTER_REPLY_STATUS,
                 'message': get_message(EmailApiErrorCode.INVALID_FILTER_REPLY_STATUS),
                 'filter_reply_status': raw,
                 'allowed': [

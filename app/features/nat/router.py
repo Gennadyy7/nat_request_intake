@@ -1,28 +1,41 @@
+from pathlib import Path
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi_keycloak_middleware import get_user
 from pydantic import EmailStr
+from starlette.background import BackgroundTask
 
+from app.core.config import settings
 from app.features.auth.dependencies import (
     get_b2b_sender_email,
     get_sender_email,
     require_email_poller_service,
 )
 from app.features.auth.schemas import User
-from app.features.nat.constants import ApiErrorCode
+from app.features.nat.constants import (
+    INTAKE_RESULTS_XLSX_MEDIA_TYPE,
+    ApiErrorCode,
+    ResultProcessingGetStatus,
+)
 from app.features.nat.dependencies import (
     get_batch_query_service,
+    get_global_processing_service,
+    get_intake_monitoring_query_service,
+    get_intake_processing_service,
     get_intake_query_service,
+    get_intake_results_service,
     get_intake_service,
+    get_result_processing_query_service,
     get_task_query_service,
 )
 from app.features.nat.list_dependencies import (
     get_nat_batch_filters,
     get_nat_batch_sort_params,
     get_nat_intake_filters,
+    get_nat_intake_monitoring_filters,
     get_nat_intake_row_errors_sort_order,
     get_nat_intake_sort_params,
     get_nat_task_filters,
@@ -34,6 +47,7 @@ from app.features.nat.pagination import PaginationParams
 from app.features.nat.query_params import (
     NatBatchFilters,
     NatIntakeFilters,
+    NatIntakeMonitoringFilters,
     NatTaskFilters,
     SortOrder,
     SortParams,
@@ -45,15 +59,43 @@ from app.features.nat.schemas.intake_list import (
     NatIntakeListItem,
     NatIntakeRowErrorListResponse,
 )
+from app.features.nat.schemas.intake_monitoring import (
+    NatIntakeMonitoringListResponse,
+)
+from app.features.nat.schemas.intake_processing import (
+    GlobalProcessingState,
+    GlobalProcessingUpdate,
+    IntakeProcessingUpdate,
+)
 from app.features.nat.schemas.pagination import PaginatedResponse
+from app.features.nat.schemas.result_processing import NatResultProcessingDetail
 from app.features.nat.schemas.task_list import NatTaskDetail, NatTaskListItem
 from app.features.nat.services.intake.intake_service import IntakeService
 from app.features.nat.services.intake.intake_upload import process_intake_upload
 from app.features.nat.services.listing.batch_query_service import BatchQueryService
+from app.features.nat.services.listing.intake_monitoring_query_service import (
+    IntakeMonitoringQueryService,
+)
 from app.features.nat.services.listing.intake_query_service import IntakeQueryService
+from app.features.nat.services.listing.result_processing_query_service import (
+    ResultProcessingQueryService,
+)
 from app.features.nat.services.listing.task_query_service import TaskQueryService
+from app.features.nat.services.processing.global_processing_service import (
+    GlobalProcessingService,
+)
+from app.features.nat.services.processing.intake_processing_service import (
+    IntakeProcessingService,
+)
+from app.features.nat.services.results.intake_results_service import (
+    IntakeResultsService,
+)
 
 router = APIRouter(prefix='/nat', tags=['nat'])
+
+
+def _unlink_path(path: Path) -> None:
+    path.unlink(missing_ok=True)
 
 
 @router.post(
@@ -72,6 +114,7 @@ async def intake_file(
     sender_email: Annotated[EmailStr, Depends(get_sender_email)],
     service: Annotated[IntakeService, Depends(get_intake_service)],
     file: Annotated[UploadFile, File()],
+    single_stage_only: Annotated[bool, Form()] = False,
 ) -> IntakeResponse | JSONResponse:
     content = await file.read()
     return await process_intake_upload(
@@ -79,6 +122,9 @@ async def intake_file(
         filename=file.filename,
         content=content,
         sender_email=sender_email,
+        enforce_max_date_range=settings.NAT_WEB_INTAKE_ENFORCE_MAX_DATE_RANGE,
+        enforce_past_date_range=(settings.NAT_WEB_INTAKE_ENFORCE_PAST_DATE_RANGE),
+        single_stage_only=single_stage_only,
     )
 
 
@@ -107,6 +153,8 @@ async def intake_file_internal(
         filename=file.filename,
         content=content,
         sender_email=sender_email,
+        enforce_max_date_range=True,
+        enforce_past_date_range=True,
     )
 
 
@@ -125,6 +173,53 @@ async def list_intakes(
     )
 
 
+@router.get(
+    '/intakes/monitoring',
+    response_model=NatIntakeMonitoringListResponse,
+)
+async def list_intakes_monitoring(
+    _user: Annotated[User, Depends(get_user)],
+    query_service: Annotated[
+        IntakeMonitoringQueryService,
+        Depends(get_intake_monitoring_query_service),
+    ],
+    filters: Annotated[
+        NatIntakeMonitoringFilters,
+        Depends(get_nat_intake_monitoring_filters),
+    ],
+    sort: Annotated[SortParams, Depends(get_nat_intake_sort_params)],
+    pagination: Annotated[PaginationParams, Depends(get_pagination_params)],
+) -> NatIntakeMonitoringListResponse:
+    return await query_service.list_monitoring(
+        filters=filters,
+        sort=sort,
+        pagination=pagination,
+    )
+
+
+@router.get('/intakes/processing', response_model=GlobalProcessingState)
+async def get_global_processing(
+    _user: Annotated[User, Depends(get_user)],
+    processing_service: Annotated[
+        GlobalProcessingService,
+        Depends(get_global_processing_service),
+    ],
+) -> GlobalProcessingState:
+    return await processing_service.get_processing_paused()
+
+
+@router.patch('/intakes/processing', response_model=GlobalProcessingState)
+async def update_global_processing(
+    payload: GlobalProcessingUpdate,
+    _user: Annotated[User, Depends(get_user)],
+    processing_service: Annotated[
+        GlobalProcessingService,
+        Depends(get_global_processing_service),
+    ],
+) -> GlobalProcessingState:
+    return await processing_service.set_processing_paused(paused=payload.paused)
+
+
 @router.get('/intakes/{intake_id}', response_model=NatIntakeDetail)
 async def get_intake(
     intake_id: UUID,
@@ -136,12 +231,101 @@ async def get_intake(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.INTAKE_NOT_FOUND,
+                'code': ApiErrorCode.INTAKE_NOT_FOUND,
                 'message': get_message(ApiErrorCode.INTAKE_NOT_FOUND),
                 'intake_id': str(intake_id),
             },
         )
     return detail
+
+
+@router.get(
+    '/intakes/{intake_id}/results',
+    response_class=FileResponse,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            'description': 'Intake not found or results artifacts unavailable',
+        },
+        status.HTTP_409_CONFLICT: {
+            'description': 'Intake pipeline is not terminally completed yet',
+        },
+    },
+)
+async def download_intake_results(
+    intake_id: UUID,
+    _user: Annotated[User, Depends(get_user)],
+    results_service: Annotated[
+        IntakeResultsService,
+        Depends(get_intake_results_service),
+    ],
+) -> FileResponse:
+    result = await results_service.resolve_download(intake_id)
+    if result.status == 'intake_not_found':
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                'code': ApiErrorCode.INTAKE_NOT_FOUND,
+                'message': get_message(ApiErrorCode.INTAKE_NOT_FOUND),
+                'intake_id': str(intake_id),
+            },
+        )
+    if result.status == 'not_ready':
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                'code': ApiErrorCode.INTAKE_RESULTS_NOT_READY,
+                'message': get_message(ApiErrorCode.INTAKE_RESULTS_NOT_READY),
+                'intake_id': str(intake_id),
+            },
+        )
+    if result.status == 'empty':
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                'code': ApiErrorCode.INTAKE_RESULTS_EMPTY,
+                'message': get_message(ApiErrorCode.INTAKE_RESULTS_EMPTY),
+                'intake_id': str(intake_id),
+            },
+        )
+
+    descriptor = result.descriptor
+    if descriptor is None:
+        raise RuntimeError(
+            'Intake results file descriptor is required when resolve status is ok'
+        )
+    return FileResponse(
+        path=descriptor.path,
+        filename=descriptor.download_filename,
+        media_type=INTAKE_RESULTS_XLSX_MEDIA_TYPE,
+        background=BackgroundTask(_unlink_path, descriptor.cleanup_path),
+    )
+
+
+@router.patch(
+    '/intakes/{intake_id}/processing',
+    response_model=NatIntakeDetail,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            'description': 'Intake not found',
+        },
+        status.HTTP_409_CONFLICT: {
+            'description': 'Intake cannot be paused or processing already finished',
+        },
+    },
+)
+async def update_intake_processing(
+    intake_id: UUID,
+    payload: IntakeProcessingUpdate,
+    _user: Annotated[User, Depends(get_user)],
+    processing_service: Annotated[
+        IntakeProcessingService,
+        Depends(get_intake_processing_service),
+    ],
+) -> NatIntakeDetail:
+    return await processing_service.set_processing_paused(
+        intake_id,
+        paused=payload.paused,
+    )
 
 
 @router.get(
@@ -167,7 +351,7 @@ async def list_intake_row_errors(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.INTAKE_NOT_FOUND,
+                'code': ApiErrorCode.INTAKE_NOT_FOUND,
                 'message': get_message(ApiErrorCode.INTAKE_NOT_FOUND),
                 'intake_id': str(intake_id),
             },
@@ -201,12 +385,52 @@ async def get_batch(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.BATCH_NOT_FOUND,
+                'code': ApiErrorCode.BATCH_NOT_FOUND,
                 'message': get_message(ApiErrorCode.BATCH_NOT_FOUND),
                 'batch_id': str(batch_id),
             },
         )
     return detail
+
+
+@router.get(
+    '/batches/{batch_id}/result-processing',
+    response_model=NatResultProcessingDetail,
+    responses={
+        status.HTTP_404_NOT_FOUND: {
+            'description': 'Batch or result processing task not found',
+        },
+    },
+)
+async def get_batch_result_processing(
+    batch_id: UUID,
+    _user: Annotated[User, Depends(get_user)],
+    query_service: Annotated[
+        ResultProcessingQueryService,
+        Depends(get_result_processing_query_service),
+    ],
+) -> NatResultProcessingDetail:
+    result = await query_service.get_by_batch_id(batch_id)
+    if result.status == ResultProcessingGetStatus.BATCH_NOT_FOUND:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                'code': ApiErrorCode.BATCH_NOT_FOUND,
+                'message': get_message(ApiErrorCode.BATCH_NOT_FOUND),
+                'batch_id': str(batch_id),
+            },
+        )
+    if result.status == ResultProcessingGetStatus.RESULT_PROCESSING_NOT_FOUND:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                'code': ApiErrorCode.RESULT_PROCESSING_NOT_FOUND,
+                'message': get_message(ApiErrorCode.RESULT_PROCESSING_NOT_FOUND),
+                'batch_id': str(batch_id),
+            },
+        )
+    assert result.detail is not None
+    return result.detail
 
 
 @router.get(
@@ -228,7 +452,7 @@ async def download_batch_file(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.BATCH_NOT_FOUND,
+                'code': ApiErrorCode.BATCH_NOT_FOUND,
                 'message': get_message(ApiErrorCode.BATCH_NOT_FOUND),
                 'batch_id': str(batch_id),
             },
@@ -237,7 +461,7 @@ async def download_batch_file(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.BATCH_FILE_NOT_FOUND,
+                'code': ApiErrorCode.BATCH_FILE_NOT_FOUND,
                 'message': get_message(ApiErrorCode.BATCH_FILE_NOT_FOUND),
                 'batch_id': str(batch_id),
             },
@@ -281,7 +505,7 @@ async def get_task(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': ApiErrorCode.TASK_NOT_FOUND,
+                'code': ApiErrorCode.TASK_NOT_FOUND,
                 'message': get_message(ApiErrorCode.TASK_NOT_FOUND),
                 'task_id': str(task_id),
             },

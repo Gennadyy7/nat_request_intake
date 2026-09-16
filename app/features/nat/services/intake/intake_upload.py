@@ -13,11 +13,17 @@ async def process_intake_upload(
     filename: str | None,
     content: bytes,
     sender_email: EmailStr,
+    enforce_max_date_range: bool,
+    enforce_past_date_range: bool,
+    single_stage_only: bool = False,
 ) -> IntakeResponse | JSONResponse:
     result = await service.process(
         filename=filename,
         content=content,
         sender_email=sender_email,
+        enforce_max_date_range=enforce_max_date_range,
+        enforce_past_date_range=enforce_past_date_range,
+        single_stage_only=single_stage_only,
     )
     if result.status == IntakeStatus.REJECTED:
         return JSONResponse(

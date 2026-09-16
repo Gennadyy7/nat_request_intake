@@ -1,6 +1,7 @@
 from types import TracebackType
 from typing import Protocol, Self
 
+from app.features.assomi.repositories import AssomiTaskRepository
 from app.features.email.repositories import (
     EmailMessageRepository,
     EmailSenderRepository,
@@ -8,8 +9,10 @@ from app.features.email.repositories import (
 from app.features.nat.repositories import (
     NatBatchRepository,
     NatDedupKeyRepository,
+    NatGlobalProcessingRepository,
     NatIntakeRepository,
     NatIntakeRowErrorRepository,
+    NatResultProcessingTaskRepository,
     NatTaskRepository,
 )
 
@@ -25,10 +28,19 @@ class UnitOfWorkProtocol(Protocol):
     def nat_batches(self) -> NatBatchRepository: ...
 
     @property
+    def nat_global_processing(self) -> NatGlobalProcessingRepository: ...
+
+    @property
     def nat_tasks(self) -> NatTaskRepository: ...
 
     @property
+    def nat_result_processing_tasks(self) -> NatResultProcessingTaskRepository: ...
+
+    @property
     def nat_dedup_keys(self) -> NatDedupKeyRepository: ...
+
+    @property
+    def assomi_tasks(self) -> AssomiTaskRepository: ...
 
     @property
     def email_senders(self) -> EmailSenderRepository: ...

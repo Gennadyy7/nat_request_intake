@@ -37,7 +37,7 @@ def parse_task_int_filter(
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail={
-                'error_code': error_code,
+                'code': error_code,
                 'message': get_message(error_code),
                 param_name: raw,
             },

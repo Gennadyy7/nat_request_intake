@@ -109,7 +109,7 @@ class EmailSenderService:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={
-                'error_code': EmailApiErrorCode.SENDER_NOT_FOUND,
+                'code': EmailApiErrorCode.SENDER_NOT_FOUND,
                 'message': get_message(EmailApiErrorCode.SENDER_NOT_FOUND),
                 'sender_id': str(sender_id),
             },
@@ -119,7 +119,7 @@ class EmailSenderService:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={
-                'error_code': EmailApiErrorCode.SENDER_ALREADY_EXISTS,
+                'code': EmailApiErrorCode.SENDER_ALREADY_EXISTS,
                 'message': get_message(EmailApiErrorCode.SENDER_ALREADY_EXISTS),
             },
         )

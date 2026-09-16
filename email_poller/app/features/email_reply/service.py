@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from app.features.email.constants import EmailReplyStatus
 from app.features.nat.schemas.intake import IntakeResponse
 from email_poller.app.core.logging import get_logger

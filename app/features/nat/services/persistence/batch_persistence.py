@@ -18,12 +18,14 @@ class BatchPersistenceService:
         storage_path: str,
         row_count: int,
         transformed_rows: Sequence[TransformedRow],
+        single_stage_only: bool = False,
     ) -> NatBatch:
         batch = NatBatch(
             id=batch_id,
             intake_id=intake_id,
             file_name=storage_path,
             row_count=row_count,
+            single_stage_only=single_stage_only,
         )
         await self._uow.nat_batches.create(batch)
         await self._uow.nat_tasks.create_many_from_rows(transformed_rows, batch_id)

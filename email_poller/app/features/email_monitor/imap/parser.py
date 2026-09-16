@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from email import message_from_bytes
@@ -23,6 +21,13 @@ class EmailAttachment:
 
 
 @dataclass(frozen=True, slots=True)
+class ParsedEmailHeaders:
+    sender_email: str
+    message_id: str
+    received_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class ParsedIncomingEmail:
     sender_email: str
     subject: str | None
@@ -30,6 +35,22 @@ class ParsedIncomingEmail:
     received_at: datetime
     message_id: str
     attachment: EmailAttachment | None
+
+
+def parse_rfc822_headers(
+    raw_headers: bytes,
+    *,
+    surrogate_message_id: str,
+) -> ParsedEmailHeaders:
+    message = message_from_bytes(raw_headers)
+    sender_email = _extract_sender_email(message)
+    received_at = _extract_received_at(message)
+    message_id = _extract_message_id(message) or surrogate_message_id
+    return ParsedEmailHeaders(
+        sender_email=sender_email,
+        message_id=message_id,
+        received_at=received_at,
+    )
 
 
 def parse_rfc822_message(

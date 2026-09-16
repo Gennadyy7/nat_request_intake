@@ -76,6 +76,16 @@ class EmailMessageRepository(SQLAlchemyRepository[EmailMessage, UUID]):
         result = await self._session.execute(statement)
         return bool(result.scalar())
 
+    async def get_by_nat_intake_id(self, nat_intake_id: UUID) -> EmailMessage | None:
+        statement = (
+            select(EmailMessage)
+            .where(EmailMessage.nat_intake_id == nat_intake_id)
+            .order_by(EmailMessage.received_at.desc())
+            .limit(1)
+        )
+        result = await self._session.execute(statement)
+        return result.scalar_one_or_none()
+
     async def count_filtered(self, filters: EmailMessageFilters) -> int:
         clauses = build_email_message_filter_clauses(filters)
         statement = select(func.count()).select_from(EmailMessage)

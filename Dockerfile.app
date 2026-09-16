@@ -18,7 +18,8 @@ FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends curl gosu && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -30,6 +31,10 @@ COPY alembic/ ./alembic/
 COPY alembic.ini ./alembic.ini
 COPY entrypoint.sh ./entrypoint.sh
 
-RUN chmod +x ./entrypoint.sh
+# Start as root so entrypoint can chown the shared bind mount, then gosu drops to appuser.
+RUN chmod +x ./entrypoint.sh && \
+    groupadd --gid 1000 appuser && \
+    useradd --uid 1000 --gid appuser --create-home appuser && \
+    chown -R appuser:appuser /app
 
 ENTRYPOINT ["./entrypoint.sh"]

@@ -91,12 +91,12 @@ class BatchQueryService:
         return NatBatchListItem(
             id=batch.id,
             intake_id=batch.intake_id,
+            intake_number=record.intake_number,
             file_name=record.original_file_name,
             row_count=batch.row_count,
             tasks_count=record.tasks_count,
             sender_email=record.sender_email,
             created_at=batch.created_at,
-            updated_at=batch.updated_at,
         )
 
     def _to_detail(self, record: NatBatchDetailRecord) -> NatBatchDetail:
@@ -104,11 +104,10 @@ class BatchQueryService:
         return NatBatchDetail(
             id=batch.id,
             intake_id=batch.intake_id,
+            intake_number=record.intake_number,
             file_name=record.original_file_name,
-            stored_file_path=batch.file_name,
             row_count=batch.row_count,
             tasks_count=record.tasks_count,
             sender_email=record.sender_email,
             created_at=batch.created_at,
-            updated_at=batch.updated_at,
         )

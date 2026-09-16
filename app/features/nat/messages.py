@@ -13,11 +13,60 @@ from app.features.nat.constants import (
     ValidationErrorCode,
 )
 
+_SECONDS_PER_DAY = 86_400
+_SECONDS_PER_HOUR = 3_600
+_SECONDS_PER_MINUTE = 60
+
+
+def format_duration_seconds_ru(total_seconds: int) -> str:
+    if total_seconds < 0:
+        raise ValueError('total_seconds must be non-negative')
+
+    days, remainder = divmod(total_seconds, _SECONDS_PER_DAY)
+    hours, remainder = divmod(remainder, _SECONDS_PER_HOUR)
+    minutes, seconds = divmod(remainder, _SECONDS_PER_MINUTE)
+
+    parts: list[str] = []
+    if days:
+        parts.append(f'{days} {_ru_plural(days, "день", "дня", "дней")}')
+    if hours:
+        parts.append(f'{hours} {_ru_plural(hours, "час", "часа", "часов")}')
+    if minutes:
+        parts.append(f'{minutes} {_ru_plural(minutes, "минута", "минуты", "минут")}')
+    if seconds or not parts:
+        parts.append(f'{seconds} {_ru_plural(seconds, "секунда", "секунды", "секунд")}')
+    return ' '.join(parts)
+
+
+def _ru_plural(value: int, one: str, few: str, many: str) -> str:
+    mod100 = abs(value) % 100
+    mod10 = mod100 % 10
+    if 11 <= mod100 <= 14:
+        return many
+    if mod10 == 1:
+        return one
+    if 2 <= mod10 <= 4:
+        return few
+    return many
+
+
 MESSAGES: dict[str, str] = {
     # ValidationErrorCode
     ValidationErrorCode.MISSING_FILENAME: 'Имя файла не указано',
     ValidationErrorCode.INVALID_FILE_FORMAT: (
         'Неподдерживаемый формат файла. Допустимые форматы: CSV, TXT, XLSX'
+    ),
+    ValidationErrorCode.MANUAL_SPIN_CSV_REQUIRED: (
+        'Неподдерживаемый формат файла. Для ручного сопоставления SPIN допустим CSV'
+    ),
+    ValidationErrorCode.MANUAL_ASSOMI_CSV_REQUIRED: (
+        'Неподдерживаемый формат файла. Для ручного обогащения ASSOMI допустим CSV'
+    ),
+    ValidationErrorCode.MANUAL_ASSOMI_NO_LOGINS: (
+        'Файл не содержит ни одного логина для обогащения ASSOMI'
+    ),
+    ValidationErrorCode.MANUAL_ASSOMI_WRONG_FILE_KIND: (
+        'Загружен файл результата ASSOMI. Ожидается spin-matched CSV с логинами'  # noqa: RUF001
     ),
     ValidationErrorCode.EMPTY_FILE: 'Файл не содержит данных',
     ValidationErrorCode.TOO_MANY_ROWS: (
@@ -33,6 +82,14 @@ MESSAGES: dict[str, str] = {
     ),
     ValidationErrorCode.INVALID_DATE_RANGE: (
         'Дата окончания не может быть раньше даты начала'
+    ),
+    ValidationErrorCode.DATE_RANGE_NOT_IN_PAST: (
+        'Дата окончания должна быть раньше текущей даты'
+    ),
+    ValidationErrorCode.DATE_RANGE_LIMIT_EXCEEDED: (
+        'Превышена максимально допустимая длительность интервала между датой '
+        'начала и датой окончания '
+        f'(не более {format_duration_seconds_ru(settings.NAT_MAX_DATE_RANGE_SECONDS)})'
     ),
     ValidationErrorCode.INVALID_IP_FORMAT: 'Некорректный формат IP-адреса',
     ValidationErrorCode.CIDR_NOT_ALLOWED: (
@@ -58,12 +115,32 @@ MESSAGES: dict[str, str] = {
         'Доступ запрещён: требуется учётная запись сервиса email-poller'
     ),
     AuthErrorCode.INVALID_SENDER_EMAIL: 'Некорректный адрес отправителя',
+    AuthErrorCode.INSUFFICIENT_PERMISSIONS: (
+        'Недостаточно прав для управления белым списком отправителей'
+    ),
     # ApiErrorCode
     ApiErrorCode.INTAKE_NOT_FOUND: 'Запрос на загрузку не найден',
     ApiErrorCode.BATCH_NOT_FOUND: 'Пакет не найден',
     ApiErrorCode.BATCH_FILE_NOT_FOUND: 'Исходный файл пакета не найден',
     ApiErrorCode.TASK_NOT_FOUND: 'Задача не найдена',
+    ApiErrorCode.RESULT_PROCESSING_NOT_FOUND: (
+        'Задача пост-обработки пакета не найдена'
+    ),
+    ApiErrorCode.RESULT_PROCESSING_NOT_READY: (
+        'Пост-обработка пакета ещё не завершена'
+    ),
+    ApiErrorCode.INTAKE_RESULTS_NOT_READY: 'Результаты заявки ещё не готовы',
+    ApiErrorCode.INTAKE_RESULTS_EMPTY: (
+        'Нет доступных файлов результатов для формирования выгрузки'
+    ),
+    ApiErrorCode.RESULT_PROCESSING_FILE_NOT_FOUND: (
+        'Файл результата пост-обработки не найден'
+    ),
     ApiErrorCode.INVALID_FILTER_STATUS: 'Недопустимое значение фильтра статуса',
+    ApiErrorCode.INVALID_FILTER_SOURCE: 'Недопустимое значение фильтра источника',
+    ApiErrorCode.INVALID_FILTER_INTAKE_CHANNEL: (
+        'Недопустимое значение фильтра канала поступления заявки'
+    ),
     ApiErrorCode.INVALID_FILTER_TASK_STATUS: (
         'Недопустимое значение фильтра статуса задачи. Допустимо: целое число или null'
     ),
@@ -71,10 +148,21 @@ MESSAGES: dict[str, str] = {
         'Недопустимое значение фильтра идентификатора запроса NAT. '
         'Допустимо: целое число или null'
     ),
+    ApiErrorCode.INVALID_FILTER_RESULT_PROCESSING_STATUS: (
+        'Недопустимое значение фильтра статуса пост-обработки'
+    ),
     ApiErrorCode.INVALID_SORT_BY: 'Недопустимое поле сортировки',
     ApiErrorCode.INVALID_SORT_ORDER: (
         'Недопустимый порядок сортировки. Допустимые значения: asc, desc'
     ),
+    ApiErrorCode.INTAKE_NOT_PAUSABLE: (
+        'Заявку нельзя приостановить: отсутствует принятый пакет обработки'
+    ),
+    ApiErrorCode.BATCH_RESULT_ALREADY_EMAILED: ('Обработка заявки уже завершена'),
+    ApiErrorCode.MANUAL_SPIN_MATCH_FAILED: (
+        'Сервис SPIN отклонил запуск ручного сопоставления'
+    ),
+    ApiErrorCode.MANUAL_SPIN_MATCH_UNAVAILABLE: ('Сервис SPIN временно недоступен'),
 }
 
 

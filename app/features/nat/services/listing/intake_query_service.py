@@ -2,17 +2,11 @@ from typing import cast
 from uuid import UUID
 
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
-from app.features.nat.constants import (
-    InputColumnName,
-    IntakeStatus,
-    RowErrorCode,
-    ValidationErrorCode,
-)
+from app.features.nat.constants import InputColumnName, RowErrorCode
 from app.features.nat.messages import get_message
 from app.features.nat.models import NatIntakeRowError
 from app.features.nat.pagination import PaginationParams, build_paginated_response
 from app.features.nat.query_params import NatIntakeFilters, SortOrder, SortParams
-from app.features.nat.repository_records import NatIntakeListRecord
 from app.features.nat.schemas.intake_list import (
     NatIntakeDetail,
     NatIntakeListItem,
@@ -20,6 +14,10 @@ from app.features.nat.schemas.intake_list import (
     NatIntakeRowErrorListResponse,
 )
 from app.features.nat.schemas.pagination import PaginatedResponse
+from app.features.nat.services.listing.intake_mapping import (
+    to_intake_detail,
+    to_intake_list_item,
+)
 
 
 class IntakeQueryService:
@@ -40,7 +38,7 @@ class IntakeQueryService:
             limit=pagination.limit,
             offset=pagination.offset,
         )
-        items = [self._to_list_item(record) for record in records]
+        items = [to_intake_list_item(record) for record in records]
         return build_paginated_response(
             items,
             total_items=total_items,
@@ -52,7 +50,7 @@ class IntakeQueryService:
         record = await self._uow.nat_intakes.get_list_record_by_id(intake_id)
         if record is None:
             return None
-        return self._to_detail(record)
+        return to_intake_detail(record)
 
     async def list_row_errors(
         self,
@@ -85,31 +83,12 @@ class IntakeQueryService:
             meta=paginated.meta,
         )
 
-    def _to_list_item(self, record: NatIntakeListRecord) -> NatIntakeListItem:
-        intake = record.intake
-        error_code = _parse_error_code(intake.error_code)
-        return NatIntakeListItem(
-            id=intake.id,
-            sender_email=intake.sender_email,
-            file_name=intake.file_name,
-            status=IntakeStatus(intake.status),
-            error_code=error_code,
-            message=get_message(error_code) if error_code is not None else None,
-            batch_id=record.batch_id,
-            created_at=intake.created_at,
-            updated_at=intake.updated_at,
-        )
-
-    def _to_detail(self, record: NatIntakeListRecord) -> NatIntakeDetail:
-        item = self._to_list_item(record)
-        return NatIntakeDetail.model_validate(item.model_dump())
-
     def _to_row_error_item(self, error: NatIntakeRowError) -> NatIntakeRowErrorItem:
         column = InputColumnName(error.column) if error.column is not None else None
         error_code = _parse_row_error_code(error.error_code)
         return NatIntakeRowErrorItem(
             row_number=error.row_number,
-            error_code=error_code,
+            code=error_code,
             column=column,
             message=get_message(error_code),
         )
@@ -117,11 +96,3 @@ class IntakeQueryService:
 
 def _parse_row_error_code(value: str) -> RowErrorCode:
     return cast(RowErrorCode, value)
-
-
-def _parse_error_code(
-    value: str | None,
-) -> ValidationErrorCode | None:
-    if value is None:
-        return None
-    return ValidationErrorCode(value)

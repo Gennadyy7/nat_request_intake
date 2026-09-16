@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from datetime import datetime
 
 from app.core.config import settings
 from app.features.nat.constants import (
@@ -33,8 +32,8 @@ class TransformationOutcome:
 class TransformationService:
     def transform(self, validated_row: ValidatedRow) -> TransformationOutcome:
         row_number = validated_row.row_number
-        datetime_from = _format_datetime(validated_row.date_from)
-        datetime_to = _format_datetime(validated_row.date_to)
+        datetime_from = validated_row.date_from
+        datetime_to = validated_row.date_to
         region = (
             validated_row.region.value
             if validated_row.region is not None
@@ -120,8 +119,3 @@ def _build_error_outcome(
             column=expansion_error.column,
         ),
     )
-
-
-def _format_datetime(value: datetime) -> str:
-    naive_value = value.replace(tzinfo=None) if value.tzinfo is not None else value
-    return naive_value.strftime(settings.NAT_OUTPUT_DATETIME_FORMAT)

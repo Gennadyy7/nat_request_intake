@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.logging import get_logger
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
+from app.features.assomi.repositories import AssomiTaskRepository
 from app.features.email.repositories import (
     EmailMessageRepository,
     EmailSenderRepository,
@@ -12,8 +13,10 @@ from app.features.email.repositories import (
 from app.features.nat.repositories import (
     NatBatchRepository,
     NatDedupKeyRepository,
+    NatGlobalProcessingRepository,
     NatIntakeRepository,
     NatIntakeRowErrorRepository,
+    NatResultProcessingTaskRepository,
     NatTaskRepository,
 )
 
@@ -27,8 +30,13 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_intakes: NatIntakeRepository | None = None
         self._nat_intake_row_errors: NatIntakeRowErrorRepository | None = None
         self._nat_batches: NatBatchRepository | None = None
+        self._nat_global_processing: NatGlobalProcessingRepository | None = None
         self._nat_tasks: NatTaskRepository | None = None
+        self._nat_result_processing_tasks: NatResultProcessingTaskRepository | None = (
+            None
+        )
         self._nat_dedup_keys: NatDedupKeyRepository | None = None
+        self._assomi_tasks: AssomiTaskRepository | None = None
         self._email_senders: EmailSenderRepository | None = None
         self._email_messages: EmailMessageRepository | None = None
         self._committed = False
@@ -68,6 +76,18 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         return self._nat_batches
 
     @property
+    def nat_global_processing(self) -> NatGlobalProcessingRepository:
+        if self._nat_global_processing is None:
+            logger.error(
+                'Attempted to access nat_global_processing repository '
+                'outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._nat_global_processing
+
+    @property
     def nat_tasks(self) -> NatTaskRepository:
         if self._nat_tasks is None:
             logger.error(
@@ -79,6 +99,18 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         return self._nat_tasks
 
     @property
+    def nat_result_processing_tasks(self) -> NatResultProcessingTaskRepository:
+        if self._nat_result_processing_tasks is None:
+            logger.error(
+                'Attempted to access nat_result_processing_tasks repository '
+                'outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._nat_result_processing_tasks
+
+    @property
     def nat_dedup_keys(self) -> NatDedupKeyRepository:
         if self._nat_dedup_keys is None:
             logger.error(
@@ -88,6 +120,17 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
                 'UnitOfWork context is not active. Access attributes inside an "async with" block.'
             )
         return self._nat_dedup_keys
+
+    @property
+    def assomi_tasks(self) -> AssomiTaskRepository:
+        if self._assomi_tasks is None:
+            logger.error(
+                'Attempted to access assomi_tasks repository outside of context manager block'
+            )
+            raise RuntimeError(
+                'UnitOfWork context is not active. Access attributes inside an "async with" block.'
+            )
+        return self._assomi_tasks
 
     @property
     def email_senders(self) -> EmailSenderRepository:
@@ -121,12 +164,19 @@ class SQLAlchemyUnitOfWork(UnitOfWorkProtocol):
         self._nat_intakes = NatIntakeRepository(self._session)
         self._nat_intake_row_errors = NatIntakeRowErrorRepository(self._session)
         self._nat_batches = NatBatchRepository(self._session)
+        self._nat_global_processing = NatGlobalProcessingRepository(self._session)
         self._nat_tasks = NatTaskRepository(self._session)
+        self._nat_result_processing_tasks = NatResultProcessingTaskRepository(
+            self._session,
+        )
         self._nat_dedup_keys = NatDedupKeyRepository(self._session)
+        self._assomi_tasks = AssomiTaskRepository(self._session)
         self._email_senders = EmailSenderRepository(self._session)
         self._email_messages = EmailMessageRepository(self._session)
         self._committed = False
-        logger.debug('Nat and email repositories initialized for UnitOfWork session')
+        logger.debug(
+            'Nat, ASSOMI and email repositories initialized for UnitOfWork session'
+        )
         return self
 
     async def __aexit__(

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
@@ -25,7 +23,9 @@ from email_poller.app.features.email_monitor.imap.client import (
     ImapMailboxClient,
 )
 from email_poller.app.features.email_monitor.imap.parser import (
+    ParsedEmailHeaders,
     ParsedIncomingEmail,
+    parse_rfc822_headers,
     parse_rfc822_message,
 )
 from email_poller.app.features.email_reply.service import EmailReplyService
@@ -90,13 +90,85 @@ class EmailPollService:
         allowed_senders: frozenset[str],
     ) -> None:
         logger.info('IMAP processing started: uid={}', uid)
+        surrogate_message_id = _surrogate_message_id(uid)
+
+        try:
+            raw_headers = await imap.fetch_header_fields_peek(uid)
+        except ImapClientError:
+            logger.exception('Failed to fetch IMAP headers uid={}', uid)
+            return
+
+        try:
+            headers = parse_rfc822_headers(
+                raw_headers,
+                surrogate_message_id=surrogate_message_id,
+            )
+        except ValueError:
+            logger.exception(
+                'Failed to parse email headers uid={} surrogate_message_id={}',
+                uid,
+                surrogate_message_id,
+            )
+            skip_code, skip_message = _skip_error_fields(EmailSkipReason.PARSE_FAILED)
+            await self._persist_and_mark_seen(
+                imap,
+                uid,
+                _EmailAuditFields(
+                    sender_email=EMAIL_PARSE_FAILURE_SENDER,
+                    message_id=surrogate_message_id,
+                    subject=None,
+                    body=None,
+                    received_at=datetime.now(UTC),
+                ),
+                processing_status=EmailProcessingStatus.SKIPPED,
+                nat_intake_id=None,
+                error_code=skip_code,
+                error_message=skip_message,
+            )
+            return
+
+        logger.info(
+            'Email headers parsed: uid={} message_id={} sender={}',
+            uid,
+            headers.message_id,
+            headers.sender_email,
+        )
+
+        if await self._is_duplicate(headers.message_id):
+            logger.info(
+                'Skipping duplicate message_id={} uid={}',
+                headers.message_id,
+                uid,
+            )
+            await imap.mark_seen(uid)
+            return
+
+        if headers.sender_email not in allowed_senders:
+            logger.info(
+                'Skipping non-whitelisted sender={} uid={} (headers only)',
+                headers.sender_email,
+                uid,
+            )
+            skip_code, skip_message = _skip_error_fields(
+                EmailSkipReason.SENDER_NOT_WHITELISTED,
+            )
+            await self._persist_and_mark_seen(
+                imap,
+                uid,
+                _fields_from_headers(headers),
+                processing_status=EmailProcessingStatus.SKIPPED,
+                nat_intake_id=None,
+                error_code=skip_code,
+                error_message=skip_message,
+            )
+            return
+
         try:
             raw_message = await imap.fetch_rfc822(uid)
         except ImapClientError:
             logger.exception('Failed to fetch IMAP uid={}', uid)
             return
 
-        surrogate_message_id = _surrogate_message_id(uid)
         try:
             parsed = parse_rfc822_message(
                 raw_message,
@@ -112,13 +184,7 @@ class EmailPollService:
             await self._persist_and_mark_seen(
                 imap,
                 uid,
-                _EmailAuditFields(
-                    sender_email=EMAIL_PARSE_FAILURE_SENDER,
-                    message_id=surrogate_message_id,
-                    subject=None,
-                    body=None,
-                    received_at=datetime.now(UTC),
-                ),
+                _fields_from_headers(headers),
                 processing_status=EmailProcessingStatus.SKIPPED,
                 nat_intake_id=None,
                 error_code=skip_code,
@@ -145,35 +211,6 @@ class EmailPollService:
                 len(parsed.attachment.content),
                 parsed.attachment.extension,
             )
-
-        if await self._is_duplicate(fields.message_id):
-            logger.info(
-                'Skipping duplicate message_id={} uid={}',
-                fields.message_id,
-                uid,
-            )
-            await imap.mark_seen(uid)
-            return
-
-        if parsed.sender_email not in allowed_senders:
-            logger.info(
-                'Skipping non-whitelisted sender={} uid={}',
-                parsed.sender_email,
-                uid,
-            )
-            skip_code, skip_message = _skip_error_fields(
-                EmailSkipReason.SENDER_NOT_WHITELISTED,
-            )
-            await self._persist_and_mark_seen(
-                imap,
-                uid,
-                fields,
-                processing_status=EmailProcessingStatus.SKIPPED,
-                nat_intake_id=None,
-                error_code=skip_code,
-                error_message=skip_message,
-            )
-            return
 
         if parsed.attachment is None:
             logger.info(
@@ -241,7 +278,7 @@ class EmailPollService:
             call_result.status_code,
             intake.status,
             intake.intake_id,
-            intake.error_code is not None,
+            intake.code is not None,
         )
         reply_status = await self._resolve_reply_status(intake=intake, fields=fields)
         if intake.status in {IntakeStatus.ACCEPTED, IntakeStatus.PARTIALLY_ACCEPTED}:
@@ -263,7 +300,7 @@ class EmailPollService:
             fields,
             processing_status=EmailProcessingStatus.REJECTED,
             nat_intake_id=intake.intake_id,
-            error_code=intake.error_code.value if intake.error_code else None,
+            error_code=intake.code.value if intake.code else None,
             error_message=intake.message,
             reply_status=reply_status,
         )
@@ -343,6 +380,16 @@ class EmailPollService:
                 uid,
                 fields.message_id,
             )
+
+
+def _fields_from_headers(headers: ParsedEmailHeaders) -> _EmailAuditFields:
+    return _EmailAuditFields(
+        sender_email=headers.sender_email,
+        message_id=headers.message_id,
+        subject=None,
+        body=None,
+        received_at=headers.received_at,
+    )
 
 
 def _fields_from_parsed(parsed: ParsedIncomingEmail) -> _EmailAuditFields:

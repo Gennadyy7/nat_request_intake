@@ -6,7 +6,12 @@ from pydantic import EmailStr
 from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.unit_of_work.protocol import UnitOfWorkProtocol
-from app.features.nat.constants import IntakeStatus, RowErrorCode, ValidationErrorCode
+from app.features.nat.constants import (
+    IntakeSource,
+    IntakeStatus,
+    RowErrorCode,
+    ValidationErrorCode,
+)
 from app.features.nat.domain.transformed_row import TransformedRow
 from app.features.nat.domain.validated_row import ValidatedRow
 from app.features.nat.messages import get_message
@@ -55,6 +60,9 @@ class IntakeService:
         filename: str | None,
         content: bytes,
         sender_email: EmailStr,
+        enforce_max_date_range: bool,
+        enforce_past_date_range: bool,
+        single_stage_only: bool = False,
     ) -> IntakeResponse:
         display_file_name = filename or ''
         intake = await self._create_intake(
@@ -132,12 +140,14 @@ class IntakeService:
                 parsed_row.values,
                 parsed_row.raw_field_count,
                 row_index,
+                enforce_max_date_range=enforce_max_date_range,
+                enforce_past_date_range=enforce_past_date_range,
             )
             for error in outcome.errors:
                 row_errors.append(
                     RowErrorResponse(
                         row_number=error.row_number,
-                        error_code=error.error_code,
+                        code=error.error_code,
                         column=error.column,
                         message=get_message(error.error_code),
                     )
@@ -170,7 +180,7 @@ class IntakeService:
             row_errors.append(
                 RowErrorResponse(
                     row_number=dedup_error.row_number,
-                    error_code=dedup_error.error_code,
+                    code=dedup_error.error_code,
                     column=None,
                     message=get_message(dedup_error.error_code),
                 )
@@ -201,7 +211,7 @@ class IntakeService:
                 row_errors.append(
                     RowErrorResponse(
                         row_number=transform_error.row_number,
-                        error_code=transform_error.error_code,
+                        code=transform_error.error_code,
                         column=transform_error.column,
                         message=get_message(transform_error.error_code),
                     )
@@ -234,7 +244,7 @@ class IntakeService:
             row_errors.append(
                 RowErrorResponse(
                     row_number=registration_error.row_number,
-                    error_code=registration_error.error_code,
+                    code=registration_error.error_code,
                     column=None,
                     message=get_message(registration_error.error_code),
                 )
@@ -278,6 +288,7 @@ class IntakeService:
                 storage_path=storage_path,
                 row_count=total_data_rows,
                 transformed_rows=transformed_rows,
+                single_stage_only=single_stage_only,
             )
             if row_errors:
                 await self._persist_row_errors(intake.id, row_errors)
@@ -308,6 +319,7 @@ class IntakeService:
 
         return self._build_response(
             intake_id=intake.id,
+            number=intake.number,
             status=status,
             file_name=filename,
             sender_email=sender_email,
@@ -329,6 +341,7 @@ class IntakeService:
             sender_email=str(sender_email),
             file_name=file_name,
             status=IntakeStatus.REJECTED.value,
+            source=IntakeSource.NAT.value,
             error_code=None,
         )
         await self._uow.nat_intakes.create(intake)
@@ -346,7 +359,7 @@ class IntakeService:
                 id=uuid4(),
                 intake_id=intake_id,
                 row_number=error.row_number,
-                error_code=_row_error_code_value(error.error_code),
+                error_code=_row_error_code_value(error.code),
                 column=error.column.value if error.column is not None else None,
             )
             for error in row_errors
@@ -371,6 +384,7 @@ class IntakeService:
         await self._uow.commit()
         return self._build_response(
             intake_id=intake.id,
+            number=intake.number,
             status=IntakeStatus.REJECTED,
             file_name=intake.file_name,
             sender_email=sender_email,
@@ -400,6 +414,7 @@ class IntakeService:
         await self._uow.commit()
         return self._build_response(
             intake_id=intake.id,
+            number=intake.number,
             status=IntakeStatus.REJECTED,
             file_name=intake.file_name,
             sender_email=sender_email,
@@ -414,6 +429,7 @@ class IntakeService:
         self,
         *,
         intake_id: UUID,
+        number: int,
         status: IntakeStatus,
         file_name: str,
         sender_email: EmailStr,
@@ -425,6 +441,7 @@ class IntakeService:
     ) -> IntakeResponse:
         return IntakeResponse(
             intake_id=intake_id,
+            number=number,
             batch_id=batch_id,
             status=status,
             file_name=file_name,
@@ -432,7 +449,7 @@ class IntakeService:
             total_data_rows=total_data_rows,
             valid_rows=valid_rows,
             rejected_rows=rejected_rows,
-            error_code=error_code,
+            code=error_code,
             message=get_message(error_code) if error_code is not None else None,
         )
 

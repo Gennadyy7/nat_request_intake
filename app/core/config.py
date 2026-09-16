@@ -1,9 +1,11 @@
 from functools import cached_property
 from typing import Literal, Self
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.storage_path_validation import normalize_absolute_base_dir
 from app.features.nat.constants import NatIpFieldName
 
 
@@ -16,14 +18,24 @@ class Settings(BaseSettings):
 
     db_url_env: str | None = Field(default=None, validation_alias='DB_URL')
 
+    APP_ROOT_PATH: str = ''
+
     APP_HOST: str
     APP_PORT: int
     APP_RELOAD: bool
+
+    CSP_ENABLED: bool
+    DOCS_ENABLED: bool
 
     KEYCLOAK_URL: str
     KEYCLOAK_REALM: str
     KEYCLOAK_CLIENT_ID: str
     KEYCLOAK_CLIENT_SECRET: str | None
+
+    NAT_BATCH_NOTIFY_WORKER_KEYCLOAK_CLIENT_ID: str
+    NAT_BATCH_NOTIFY_WORKER_KEYCLOAK_CLIENT_SECRET: str
+    BATCH_MATCH_SPIN_URL: str
+    BATCH_NOTIFY_HTTP_TIMEOUT_SECONDS: int = Field(ge=1)
 
     KEYCLOAK_SWAGGER_CLIENT_ID: str
     KEYCLOAK_SWAGGER_BASE_URL: str
@@ -32,7 +44,7 @@ class Settings(BaseSettings):
 
     admin_roles_env: str = Field(validation_alias='ADMIN_ROLES')
 
-    EMAIL_POLLER_CLIENT_ID: str = 'email_poller_client'
+    EMAIL_POLLER_CLIENT_ID: str
 
     DB_HOST: str | None = None
     DB_PORT: int | None = None
@@ -49,11 +61,23 @@ class Settings(BaseSettings):
     API_PAGINATION_MAX_LIMIT: int = Field(ge=1)
 
     NAT_MAX_BATCH_ROWS: int = Field(ge=1)
+    NAT_MAX_DATE_RANGE_SECONDS: int = Field(ge=1)
+    NAT_WEB_INTAKE_ENFORCE_MAX_DATE_RANGE: bool
+    NAT_WEB_INTAKE_ENFORCE_PAST_DATE_RANGE: bool
     NAT_IDEMPOTENCY_WINDOW_MINUTES: int = Field(ge=1)
-    NAT_OUTPUT_DATETIME_FORMAT: str
+    NAT_TASK_DISPLAY_DATETIME_FORMAT: str
     NAT_INPUT_FIELD_SEPARATOR: str
     NAT_MISSING_FIELD_PLACEHOLDER: str
-    NAT_UPLOAD_BASE_DIR: str = 'backend/uploads/nat'
+    NAT_UPLOAD_BASE_DIR: str
+    SPIN_AGGREGATED_BASE_DIR: str
+    ASSOMI_BASE_DIR: str
+    NAT_RESULT_XLSX_MERGE_STAGE_FILES: bool
+    nat_upload_date_timezone_env: str = Field(
+        validation_alias='NAT_UPLOAD_DATE_TIMEZONE',
+    )
+    nat_date_validation_timezone_env: str = Field(
+        validation_alias='NAT_DATE_VALIDATION_TIMEZONE',
+    )
     NAT_MAX_EXPANSION_PER_FIELD: int = Field(default=256, ge=1)
     NAT_MAX_TOTAL_EXPANSION_PRODUCT: int = Field(default=256, ge=1)
     nat_cidr_allowed_fields_env: str = Field(
@@ -85,6 +109,76 @@ class Settings(BaseSettings):
                     f'Invalid NAT IP field name {stripped!r}. '
                     f'Allowed values: {", ".join(member.value for member in NatIpFieldName)}'
                 ) from exc
+        return value
+
+    @field_validator('nat_upload_date_timezone_env', mode='before')
+    @classmethod
+    def validate_nat_upload_date_timezone(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise ValueError('NAT_UPLOAD_DATE_TIMEZONE must be a string')
+        if not value:
+            raise ValueError('NAT_UPLOAD_DATE_TIMEZONE must not be empty')
+        if value != value.strip():
+            raise ValueError(
+                'NAT_UPLOAD_DATE_TIMEZONE must not contain leading or trailing whitespace'
+            )
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(
+                f'Invalid NAT_UPLOAD_DATE_TIMEZONE value {value!r}. '
+                'Use UTC or a valid IANA timezone name (e.g. Europe/Minsk).'
+            ) from exc
+        return value
+
+    @field_validator('nat_date_validation_timezone_env', mode='before')
+    @classmethod
+    def validate_nat_date_validation_timezone(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise ValueError('NAT_DATE_VALIDATION_TIMEZONE must be a string')
+        if not value:
+            raise ValueError('NAT_DATE_VALIDATION_TIMEZONE must not be empty')
+        if value != value.strip():
+            raise ValueError(
+                'NAT_DATE_VALIDATION_TIMEZONE must not contain leading or trailing '
+                'whitespace'
+            )
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError as exc:
+            raise ValueError(
+                f'Invalid NAT_DATE_VALIDATION_TIMEZONE value {value!r}. '
+                'Use UTC or a valid IANA timezone name (e.g. Europe/Minsk).'
+            ) from exc
+        return value
+
+    @field_validator(
+        'NAT_UPLOAD_BASE_DIR',
+        'SPIN_AGGREGATED_BASE_DIR',
+        'ASSOMI_BASE_DIR',
+        mode='before',
+    )
+    @classmethod
+    def validate_absolute_base_dir(cls, value: object) -> str:
+        return normalize_absolute_base_dir(value)
+
+    @field_validator('APP_ROOT_PATH', mode='before')
+    @classmethod
+    def validate_app_root_path(cls, value: object) -> str:
+        if value is None:
+            return ''
+        if not isinstance(value, str):
+            raise ValueError('APP_ROOT_PATH must be a string')
+        if value == '':
+            return ''
+        if any(character.isspace() for character in value):
+            raise ValueError('APP_ROOT_PATH must not contain whitespace')
+        if not value.startswith('/'):
+            raise ValueError('APP_ROOT_PATH must be empty or start with "/"')
+        if value.endswith('/'):
+            raise ValueError('APP_ROOT_PATH must not end with "/"')
+        if '//' in value:
+            raise ValueError('APP_ROOT_PATH must not contain "//"')
         return value
 
     @model_validator(mode='after')
@@ -168,6 +262,14 @@ class Settings(BaseSettings):
             for internal_network in self.nat_beltelecom_internal_networks_env.split(',')
             if internal_network.strip()
         }
+
+    @cached_property
+    def NAT_UPLOAD_DATE_TIMEZONE(self) -> ZoneInfo:  # noqa: N802
+        return ZoneInfo(self.nat_upload_date_timezone_env)
+
+    @cached_property
+    def NAT_DATE_VALIDATION_TIMEZONE(self) -> ZoneInfo:  # noqa: N802
+        return ZoneInfo(self.nat_date_validation_timezone_env)
 
 
 settings = Settings()  # type: ignore[call-arg]

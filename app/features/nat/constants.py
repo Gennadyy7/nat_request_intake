@@ -3,11 +3,21 @@ from typing import Final
 
 
 class NatTaskStatus(IntEnum):
+    LOCAL_ABANDONED = -999
     CANCELLED = -20
     QUEUED = -1
     LAUNCHED = 10
     IN_PROGRESS = 20
     COMPLETED = 30
+
+
+NON_TERMINAL_NAT_STATUSES: Final[frozenset[int]] = frozenset(
+    {
+        NatTaskStatus.QUEUED,
+        NatTaskStatus.LAUNCHED,
+        NatTaskStatus.IN_PROGRESS,
+    }
+)
 
 
 class NatIpFieldName(StrEnum):
@@ -28,6 +38,10 @@ class InputColumnName(StrEnum):
 class ValidationErrorCode(StrEnum):
     MISSING_FILENAME = 'MISSING_FILENAME'
     INVALID_FILE_FORMAT = 'INVALID_FILE_FORMAT'
+    MANUAL_SPIN_CSV_REQUIRED = 'MANUAL_SPIN_CSV_REQUIRED'
+    MANUAL_ASSOMI_CSV_REQUIRED = 'MANUAL_ASSOMI_CSV_REQUIRED'
+    MANUAL_ASSOMI_NO_LOGINS = 'MANUAL_ASSOMI_NO_LOGINS'
+    MANUAL_ASSOMI_WRONG_FILE_KIND = 'MANUAL_ASSOMI_WRONG_FILE_KIND'
     EMPTY_FILE = 'EMPTY_FILE'
     TOO_MANY_ROWS = 'TOO_MANY_ROWS'
     INVALID_HEADERS = 'INVALID_HEADERS'
@@ -35,6 +49,8 @@ class ValidationErrorCode(StrEnum):
     MISSING_REQUIRED_FIELD = 'MISSING_REQUIRED_FIELD'
     INVALID_DATE_FORMAT = 'INVALID_DATE_FORMAT'
     INVALID_DATE_RANGE = 'INVALID_DATE_RANGE'
+    DATE_RANGE_NOT_IN_PAST = 'DATE_RANGE_NOT_IN_PAST'
+    DATE_RANGE_LIMIT_EXCEEDED = 'DATE_RANGE_LIMIT_EXCEEDED'
     INVALID_IP_FORMAT = 'INVALID_IP_FORMAT'
     CIDR_NOT_ALLOWED = 'CIDR_NOT_ALLOWED'
     IP_NOT_BELTELECOM = 'IP_NOT_BELTELECOM'
@@ -81,8 +97,46 @@ MEDIA_TYPE_BY_EXTENSION: Final[dict[AllowedFileExtension, str]] = {
     ),
 }
 
+ZIP_DOWNLOAD_MEDIA_TYPE: Final[str] = 'application/zip'
+
+RESULT_SHEET_APPLICATION: Final[str] = 'Заявка'
+RESULT_SHEET_AGGREGATION: Final[str] = 'Агрегация'
+RESULT_SHEET_SPIN: Final[str] = 'SPIN'
+RESULT_SHEET_ASSOMI: Final[str] = 'ASSOMI'
+
+INTAKE_RESULTS_XLSX_MEDIA_TYPE: Final[str] = (
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+)
+
 
 TASK_FILTER_NULL_SENTINEL: Final[str] = 'null'
+
+
+class NatResultProcessingStatus(StrEnum):
+    PENDING = 'pending'
+    DOWNLOADING = 'downloading'
+    AGGREGATING = 'aggregating'
+    MATCHING_SPIN = 'matching_spin'
+    COMPLETED = 'completed'
+    FAILED = 'failed'
+
+
+class NatAggregationQueueStatus(StrEnum):
+    PENDING = 'pending'
+    PROCESSING = 'processing'
+    COMPLETED = 'completed'
+    FAILED = 'failed'
+
+
+class NatAggregationQueueProcessingType(StrEnum):
+    AGGREGATION = 'aggregation'
+    SPIN_MATCH = 'spin_match'
+
+
+class ResultProcessingGetStatus(StrEnum):
+    OK = 'ok'
+    BATCH_NOT_FOUND = 'batch_not_found'
+    RESULT_PROCESSING_NOT_FOUND = 'result_processing_not_found'
 
 
 class ApiErrorCode(StrEnum):
@@ -90,17 +144,46 @@ class ApiErrorCode(StrEnum):
     BATCH_NOT_FOUND = 'BATCH_NOT_FOUND'
     BATCH_FILE_NOT_FOUND = 'BATCH_FILE_NOT_FOUND'
     TASK_NOT_FOUND = 'TASK_NOT_FOUND'
+    RESULT_PROCESSING_NOT_FOUND = 'RESULT_PROCESSING_NOT_FOUND'
+    RESULT_PROCESSING_NOT_READY = 'RESULT_PROCESSING_NOT_READY'
+    RESULT_PROCESSING_FILE_NOT_FOUND = 'RESULT_PROCESSING_FILE_NOT_FOUND'
     INVALID_FILTER_STATUS = 'INVALID_FILTER_STATUS'
+    INVALID_FILTER_SOURCE = 'INVALID_FILTER_SOURCE'
+    INVALID_FILTER_INTAKE_CHANNEL = 'INVALID_FILTER_INTAKE_CHANNEL'
     INVALID_FILTER_TASK_STATUS = 'INVALID_FILTER_TASK_STATUS'
     INVALID_FILTER_NAT_REQUEST_ID = 'INVALID_FILTER_NAT_REQUEST_ID'
+    INVALID_FILTER_RESULT_PROCESSING_STATUS = 'INVALID_FILTER_RESULT_PROCESSING_STATUS'
     INVALID_SORT_BY = 'INVALID_SORT_BY'
     INVALID_SORT_ORDER = 'INVALID_SORT_ORDER'
+    INTAKE_NOT_PAUSABLE = 'INTAKE_NOT_PAUSABLE'
+    BATCH_RESULT_ALREADY_EMAILED = 'BATCH_RESULT_ALREADY_EMAILED'
+    INTAKE_RESULTS_NOT_READY = 'INTAKE_RESULTS_NOT_READY'
+    INTAKE_RESULTS_EMPTY = 'INTAKE_RESULTS_EMPTY'
+    MANUAL_SPIN_MATCH_FAILED = 'MANUAL_SPIN_MATCH_FAILED'
+    MANUAL_SPIN_MATCH_UNAVAILABLE = 'MANUAL_SPIN_MATCH_UNAVAILABLE'
 
 
 class IntakeStatus(StrEnum):
     REJECTED = 'rejected'
     PARTIALLY_ACCEPTED = 'partially_accepted'
     ACCEPTED = 'accepted'
+
+
+class IntakeSource(StrEnum):
+    NAT = 'nat'
+    MANUAL_SPIN = 'manual_spin'
+    MANUAL_ASSOMI = 'manual_assomi'
+
+
+class IntakeChannel(StrEnum):
+    EMAIL = 'email'
+    WEB = 'web'
+
+
+def is_file_level_intake_rejection(error_code: str | None) -> bool:
+    if error_code is None:
+        return False
+    return error_code != ValidationErrorCode.NO_VALID_ROWS.value
 
 
 REQUIRED_COLUMNS: Final[frozenset[InputColumnName]] = frozenset(InputColumnName)

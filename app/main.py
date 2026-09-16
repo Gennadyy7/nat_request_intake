@@ -9,10 +9,17 @@ import uvicorn
 
 from app.api import api_router
 from app.core.config import settings
+from app.core.csp import (
+    CSP_API_POLICY,
+    ContentSecurityPolicyMiddleware,
+    build_docs_csp_policy,
+    collect_keycloak_origins,
+)
 from app.core.database import db_manager
 from app.core.keycloak import get_keycloak_config, map_user
 from app.core.logging import get_logger, setup_logging
 
+setup_logging()
 logger = get_logger(__name__)
 
 
@@ -27,11 +34,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info('Application shutting down')
 
 
+_docs_url = '/docs' if settings.DOCS_ENABLED else None
+_redoc_url = '/redoc' if settings.DOCS_ENABLED else None
+_openapi_url = '/openapi.json' if settings.DOCS_ENABLED else None
+
 app = FastAPI(
     lifespan=lifespan,
     title='Nat Request Intake',
     description='',
     version='0.1.0',
+    root_path=settings.APP_ROOT_PATH,
+    docs_url=_docs_url,
+    redoc_url=_redoc_url,
+    openapi_url=_openapi_url,
 )
 
 setup_keycloak_middleware(
@@ -58,12 +73,29 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
-app.include_router(api_router, prefix='/api')
+_keycloak_origins = collect_keycloak_origins(
+    settings.KEYCLOAK_SWAGGER_BASE_URL,
+    settings.KEYCLOAK_URL,
+)
+app.add_middleware(
+    ContentSecurityPolicyMiddleware,
+    enabled=settings.CSP_ENABLED,
+    docs_enabled=settings.DOCS_ENABLED,
+    api_policy=CSP_API_POLICY,
+    docs_policy=build_docs_csp_policy(_keycloak_origins),
+)
+
+_api_prefix = '' if settings.APP_ROOT_PATH else '/api'
+app.include_router(api_router, prefix=_api_prefix)
 
 
 @app.get('/')
-async def root_redirect() -> Response:
-    return Response(status_code=status.HTTP_302_FOUND, headers={'Location': '/docs'})
+async def root() -> Response:
+    if not settings.DOCS_ENABLED:
+        return Response(status_code=status.HTTP_404_NOT_FOUND)
+
+    docs_path = f'{settings.APP_ROOT_PATH}/docs' if settings.APP_ROOT_PATH else '/docs'
+    return Response(status_code=status.HTTP_302_FOUND, headers={'Location': docs_path})
 
 
 @app.get('/health')
@@ -82,7 +114,6 @@ async def health_check() -> dict[str, str]:
 
 
 def main() -> None:
-    setup_logging()
     logger.info(f'Starting server on {settings.APP_HOST}:{settings.APP_PORT}')
     uvicorn.run(
         'app.main:app',
