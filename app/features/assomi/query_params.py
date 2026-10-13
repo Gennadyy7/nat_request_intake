@@ -16,6 +16,7 @@ class AssomiTaskFilters:
     aggregation_task_id: UUID | None = None
     batch_id: UUID | None = None
     intake_number: int | None = None
+    sender_email: str | None = None
     status: AssomiTaskStatus | None = None
     created_at_from: datetime | None = None
     created_at_to: datetime | None = None

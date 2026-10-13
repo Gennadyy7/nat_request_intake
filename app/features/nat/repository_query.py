@@ -202,6 +202,9 @@ def build_result_processing_list_filter_clauses(
         clauses.append(NatResultProcessingTask.nat_batch_id == filters.batch_id)
     if filters.intake_number is not None:
         clauses.append(NatIntake.number == filters.intake_number)
+    if filters.sender_email is not None:
+        pattern = f'%{escape_ilike_pattern(filters.sender_email)}%'
+        clauses.append(NatIntake.sender_email.ilike(pattern))
     if filters.status is not None:
         clauses.append(NatResultProcessingTask.status == filters.status.value)
     if filters.created_at_from is not None:
@@ -220,7 +223,7 @@ def build_result_processing_list_filter_clauses(
 def result_processing_list_requires_intake_join(
     filters: NatResultProcessingFilters,
 ) -> bool:
-    return filters.intake_number is not None
+    return filters.intake_number is not None or filters.sender_email is not None
 
 
 def intake_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:

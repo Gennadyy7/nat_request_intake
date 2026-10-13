@@ -2,7 +2,18 @@ from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 from uuid import UUID, uuid4
 
-from sqlalchemy import and_, case, delete, func, insert, or_, select, text, update
+from sqlalchemy import (
+    and_,
+    case,
+    delete,
+    exists,
+    func,
+    insert,
+    or_,
+    select,
+    text,
+    update,
+)
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -648,10 +659,20 @@ class NatBatchRepository(SQLAlchemyRepository[NatBatch, UUID]):
             and_(aggregation_completed_without_spin, ~has_assomi_task),
             nat_all_failed,
         )
+        # Final XLSX/CSV result emails must only be sent for intakes that originally
+        # arrived via the IMAP poller (i.e. have an audit trail in email_messages).
+        # Web uploads (manual_spin, manual_assomi, or direct NAT web uploads) do not
+        # create an EmailMessage record and therefore must be skipped by this worker.
+        is_email_intake = exists(
+            select(EmailMessage.id)
+            .where(EmailMessage.nat_intake_id == NatIntake.id)
+            .correlate_except(EmailMessage)
+        )
         conditions = [
             NatBatch.result_emailed_at.is_(None),
             NatBatch.single_stage_only.is_(False),
             ready_for_result_email,
+            is_email_intake,
         ]
         if respect_processing_pause:
             conditions.append(NatBatch.processing_paused.is_(False))

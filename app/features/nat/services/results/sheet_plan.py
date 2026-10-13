@@ -5,9 +5,9 @@ from pathlib import Path
 from app.features.assomi.constants import AssomiTaskStatus
 from app.features.assomi.models import AssomiTask
 from app.features.nat.constants import (
-    RESULT_SHEET_AGGREGATION,
     RESULT_SHEET_APPLICATION,
     RESULT_SHEET_ASSOMI,
+    RESULT_SHEET_NAT,
     RESULT_SHEET_SPIN,
     IntakeSource,
     IntakeStatus,
@@ -82,7 +82,7 @@ def build_sheet_plan(
         )
         specs.extend(
             _stage_specs(
-                base_title=RESULT_SHEET_AGGREGATION,
+                base_title=RESULT_SHEET_NAT,
                 kind=SheetKind.AGGREGATION,
                 paths=aggregated_paths,
                 merge_stage_files=merge_stage_files,

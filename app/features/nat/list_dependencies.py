@@ -98,18 +98,20 @@ def get_nat_result_processing_sort_params(
     )
 
 
-def get_nat_intake_filters(
-    filter_intake_id: Annotated[UUID | None, Query()] = None,
-    filter_intake_number: Annotated[int | None, Query(ge=1)] = None,
-    filter_sender_email: Annotated[str | None, Query()] = None,
-    filter_file_name: Annotated[str | None, Query()] = None,
-    filter_created_at_from: Annotated[datetime | None, Query()] = None,
-    filter_created_at_to: Annotated[datetime | None, Query()] = None,
-    filter_status: Annotated[str | None, Query()] = None,
-    filter_source: Annotated[str | None, Query()] = None,
-    filter_processing_paused: Annotated[bool | None, Query()] = None,
-    filter_intake_channel: Annotated[str | None, Query()] = None,
-    filter_single_stage_only: Annotated[bool | None, Query()] = None,
+def _parse_intake_filters(
+    filter_intake_id: UUID | None,
+    filter_intake_number: int | None,
+    filter_sender_email: str | None,
+    filter_file_name: str | None,
+    filter_created_at_from: datetime | None,
+    filter_created_at_to: datetime | None,
+    filter_status: str | None,
+    filter_source: str | None,
+    filter_processing_paused: bool | None,
+    filter_intake_channel: str | None,
+    filter_single_stage_only: bool | None,
+    *,
+    apply_nat_source_default: bool,
 ) -> NatIntakeFilters:
     status_value: IntakeStatus | None = None
     if filter_status is not None:
@@ -125,6 +127,7 @@ def get_nat_intake_filters(
                     'allowed': [member.value for member in IntakeStatus],
                 },
             ) from exc
+
     source_value: IntakeSource | None = None
     if filter_source is not None:
         try:
@@ -139,6 +142,12 @@ def get_nat_intake_filters(
                     'allowed': [member.value for member in IntakeSource],
                 },
             ) from exc
+    elif apply_nat_source_default:
+        # The frontend removed the source filter from the user-facing /intakes page.
+        # We silently force the source filter to 'nat' when it is omitted on the standard user endpoint.
+        # The monitoring endpoint keeps the original behavior (no default).
+        source_value = IntakeSource.NAT
+
     intake_channel_value: IntakeChannel | None = None
     if filter_intake_channel is not None:
         try:
@@ -153,6 +162,7 @@ def get_nat_intake_filters(
                     'allowed': [member.value for member in IntakeChannel],
                 },
             ) from exc
+
     return NatIntakeFilters(
         intake_id=filter_intake_id,
         intake_number=filter_intake_number,
@@ -165,6 +175,35 @@ def get_nat_intake_filters(
         processing_paused=filter_processing_paused,
         intake_channel=intake_channel_value,
         single_stage_only=filter_single_stage_only,
+    )
+
+
+def get_nat_intake_filters(
+    filter_intake_id: Annotated[UUID | None, Query()] = None,
+    filter_intake_number: Annotated[int | None, Query(ge=1)] = None,
+    filter_sender_email: Annotated[str | None, Query()] = None,
+    filter_file_name: Annotated[str | None, Query()] = None,
+    filter_created_at_from: Annotated[datetime | None, Query()] = None,
+    filter_created_at_to: Annotated[datetime | None, Query()] = None,
+    filter_status: Annotated[str | None, Query()] = None,
+    filter_source: Annotated[str | None, Query()] = None,
+    filter_processing_paused: Annotated[bool | None, Query()] = None,
+    filter_intake_channel: Annotated[str | None, Query()] = None,
+    filter_single_stage_only: Annotated[bool | None, Query()] = None,
+) -> NatIntakeFilters:
+    return _parse_intake_filters(
+        filter_intake_id=filter_intake_id,
+        filter_intake_number=filter_intake_number,
+        filter_sender_email=filter_sender_email,
+        filter_file_name=filter_file_name,
+        filter_created_at_from=filter_created_at_from,
+        filter_created_at_to=filter_created_at_to,
+        filter_status=filter_status,
+        filter_source=filter_source,
+        filter_processing_paused=filter_processing_paused,
+        filter_intake_channel=filter_intake_channel,
+        filter_single_stage_only=filter_single_stage_only,
+        apply_nat_source_default=True,
     )
 
 
@@ -183,7 +222,7 @@ def get_nat_intake_monitoring_filters(
     filter_result_processing_status: Annotated[str | None, Query()] = None,
     filter_assomi_status: Annotated[str | None, Query()] = None,
 ) -> NatIntakeMonitoringFilters:
-    base_filters = get_nat_intake_filters(
+    base_filters = _parse_intake_filters(
         filter_intake_id=filter_intake_id,
         filter_intake_number=filter_intake_number,
         filter_sender_email=filter_sender_email,
@@ -195,6 +234,7 @@ def get_nat_intake_monitoring_filters(
         filter_processing_paused=filter_processing_paused,
         filter_intake_channel=filter_intake_channel,
         filter_single_stage_only=filter_single_stage_only,
+        apply_nat_source_default=False,
     )
     result_processing_filter = parse_result_processing_status_filter(
         filter_result_processing_status,
@@ -290,6 +330,7 @@ def get_nat_result_processing_filters(
     filter_result_processing_id: Annotated[UUID | None, Query()] = None,
     filter_batch_id: Annotated[UUID | None, Query()] = None,
     filter_intake_number: Annotated[int | None, Query(ge=1)] = None,
+    filter_sender_email: Annotated[str | None, Query()] = None,
     filter_status: Annotated[str | None, Query()] = None,
     filter_created_at_from: Annotated[datetime | None, Query()] = None,
     filter_created_at_to: Annotated[datetime | None, Query()] = None,
@@ -300,6 +341,7 @@ def get_nat_result_processing_filters(
         result_processing_id=filter_result_processing_id,
         batch_id=filter_batch_id,
         intake_number=filter_intake_number,
+        sender_email=filter_sender_email,
         status=parse_result_processing_list_status_filter(filter_status),
         created_at_from=filter_created_at_from,
         created_at_to=filter_created_at_to,

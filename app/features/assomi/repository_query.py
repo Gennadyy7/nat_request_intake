@@ -5,6 +5,7 @@ from app.features.assomi.models import AssomiTask
 from app.features.assomi.query_params import AssomiTaskFilters
 from app.features.nat.models import NatIntake
 from app.features.nat.query_params import SortParams
+from app.features.nat.repository_query import escape_ilike_pattern
 
 
 def build_assomi_list_filter_clauses(
@@ -19,6 +20,9 @@ def build_assomi_list_filter_clauses(
         clauses.append(AssomiTask.nat_batch_id == filters.batch_id)
     if filters.intake_number is not None:
         clauses.append(NatIntake.number == filters.intake_number)
+    if filters.sender_email is not None:
+        pattern = f'%{escape_ilike_pattern(filters.sender_email)}%'
+        clauses.append(NatIntake.sender_email.ilike(pattern))
     if filters.status is not None:
         clauses.append(AssomiTask.status == filters.status.value)
     if filters.created_at_from is not None:
@@ -33,7 +37,7 @@ def build_assomi_list_filter_clauses(
 
 
 def assomi_list_requires_intake_join(filters: AssomiTaskFilters) -> bool:
-    return filters.intake_number is not None
+    return filters.intake_number is not None or filters.sender_email is not None
 
 
 def assomi_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:

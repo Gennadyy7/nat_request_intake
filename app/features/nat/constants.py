@@ -100,7 +100,7 @@ MEDIA_TYPE_BY_EXTENSION: Final[dict[AllowedFileExtension, str]] = {
 ZIP_DOWNLOAD_MEDIA_TYPE: Final[str] = 'application/zip'
 
 RESULT_SHEET_APPLICATION: Final[str] = 'Заявка'
-RESULT_SHEET_AGGREGATION: Final[str] = 'Агрегация'
+RESULT_SHEET_NAT: Final[str] = 'NAT'
 RESULT_SHEET_SPIN: Final[str] = 'SPIN'
 RESULT_SHEET_ASSOMI: Final[str] = 'ASSOMI'
 

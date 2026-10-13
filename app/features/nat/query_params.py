@@ -86,6 +86,7 @@ class NatResultProcessingFilters:
     result_processing_id: UUID | None = None
     batch_id: UUID | None = None
     intake_number: int | None = None
+    sender_email: str | None = None
     status: NatResultProcessingStatus | None = None
     created_at_from: datetime | None = None
     created_at_to: datetime | None = None
