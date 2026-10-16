@@ -260,6 +260,7 @@ def result_processing_sort_column(sort: SortParams) -> InstrumentedAttribute[obj
         'status': NatResultProcessingTask.status,
         'batch_id': NatResultProcessingTask.nat_batch_id,
         'completed_at': NatResultProcessingTask.completed_at,
+        'sender_email': NatIntake.sender_email,
     }[sort.sort_by]
 
 

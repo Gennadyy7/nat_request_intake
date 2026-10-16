@@ -263,6 +263,7 @@ class ResultProcessingQueryService:
             id=task.id,
             batch_id=task.nat_batch_id,
             intake_number=record.intake_number,
+            sender_email=record.sender_email,
             status=NatResultProcessingStatus(task.status),
             matched_count=task.matched_count,
             total_to_match=task.total_to_match,

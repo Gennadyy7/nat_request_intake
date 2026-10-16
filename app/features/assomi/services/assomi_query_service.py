@@ -105,6 +105,7 @@ class AssomiQueryService:
             aggregation_task_id=task.aggregation_task_id,
             batch_id=task.nat_batch_id,
             intake_number=record.intake_number,
+            sender_email=record.sender_email,
             status=AssomiTaskStatus(task.status),
             found_count=task.found_count,
             missing_count=task.missing_count,

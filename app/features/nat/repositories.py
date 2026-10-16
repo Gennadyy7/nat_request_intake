@@ -1192,7 +1192,7 @@ class NatResultProcessingTaskRepository(
         result_processing_id: UUID,
     ) -> NatResultProcessingListRecord | None:
         statement = (
-            select(NatResultProcessingTask, NatIntake.number)
+            select(NatResultProcessingTask, NatIntake.number, NatIntake.sender_email)
             .join(NatBatch, NatResultProcessingTask.nat_batch_id == NatBatch.id)
             .join(NatIntake, NatBatch.intake_id == NatIntake.id)
             .where(NatResultProcessingTask.id == result_processing_id)
@@ -1201,10 +1201,11 @@ class NatResultProcessingTaskRepository(
         row = result.one_or_none()
         if row is None:
             return None
-        task, intake_number = row
+        task, intake_number, sender_email = row
         return NatResultProcessingListRecord(
             task=task,
             intake_number=int(intake_number),
+            sender_email=sender_email,
         )
 
     async def get_list_record_by_batch_id(
@@ -1212,7 +1213,7 @@ class NatResultProcessingTaskRepository(
         batch_id: UUID,
     ) -> NatResultProcessingListRecord | None:
         statement = (
-            select(NatResultProcessingTask, NatIntake.number)
+            select(NatResultProcessingTask, NatIntake.number, NatIntake.sender_email)
             .join(NatBatch, NatResultProcessingTask.nat_batch_id == NatBatch.id)
             .join(NatIntake, NatBatch.intake_id == NatIntake.id)
             .where(NatResultProcessingTask.nat_batch_id == batch_id)
@@ -1221,10 +1222,11 @@ class NatResultProcessingTaskRepository(
         row = result.one_or_none()
         if row is None:
             return None
-        task, intake_number = row
+        task, intake_number, sender_email = row
         return NatResultProcessingListRecord(
             task=task,
             intake_number=int(intake_number),
+            sender_email=sender_email,
         )
 
     async def count_filtered(self, filters: NatResultProcessingFilters) -> int:
@@ -1252,7 +1254,7 @@ class NatResultProcessingTaskRepository(
     ) -> Sequence[NatResultProcessingListRecord]:
         clauses = build_result_processing_list_filter_clauses(filters)
         statement = (
-            select(NatResultProcessingTask, NatIntake.number)
+            select(NatResultProcessingTask, NatIntake.number, NatIntake.sender_email)
             .join(NatBatch, NatResultProcessingTask.nat_batch_id == NatBatch.id)
             .join(NatIntake, NatBatch.intake_id == NatIntake.id)
             .order_by(
@@ -1271,6 +1273,7 @@ class NatResultProcessingTaskRepository(
             NatResultProcessingListRecord(
                 task=task,
                 intake_number=int(intake_number),
+                sender_email=sender_email,
             )
-            for task, intake_number in result.all()
+            for task, intake_number, sender_email in result.all()
         ]

@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.features.nat.constants import NatResultProcessingStatus
 
@@ -10,6 +10,7 @@ class NatResultProcessingListItem(BaseModel):
     id: UUID
     batch_id: UUID
     intake_number: int = Field(ge=1)
+    sender_email: EmailStr
     status: NatResultProcessingStatus
     matched_count: int | None = None
     total_to_match: int | None = None

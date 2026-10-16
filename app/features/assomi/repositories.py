@@ -141,7 +141,7 @@ class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
         assomi_task_id: UUID,
     ) -> AssomiTaskListRecord | None:
         statement = (
-            select(AssomiTask, NatIntake.number)
+            select(AssomiTask, NatIntake.number, NatIntake.sender_email)
             .join(NatBatch, AssomiTask.nat_batch_id == NatBatch.id)
             .join(NatIntake, NatBatch.intake_id == NatIntake.id)
             .where(AssomiTask.id == assomi_task_id)
@@ -150,10 +150,11 @@ class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
         row = result.one_or_none()
         if row is None:
             return None
-        task, intake_number = row
+        task, intake_number, sender_email = row
         return AssomiTaskListRecord(
             task=task,
             intake_number=int(intake_number),
+            sender_email=sender_email,
         )
 
     async def count_filtered(self, filters: AssomiTaskFilters) -> int:
@@ -181,7 +182,7 @@ class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
     ) -> Sequence[AssomiTaskListRecord]:
         clauses = build_assomi_list_filter_clauses(filters)
         statement = (
-            select(AssomiTask, NatIntake.number)
+            select(AssomiTask, NatIntake.number, NatIntake.sender_email)
             .join(NatBatch, AssomiTask.nat_batch_id == NatBatch.id)
             .join(NatIntake, NatBatch.intake_id == NatIntake.id)
             .order_by(
@@ -200,6 +201,7 @@ class AssomiTaskRepository(SQLAlchemyRepository[AssomiTask, UUID]):
             AssomiTaskListRecord(
                 task=task,
                 intake_number=int(intake_number),
+                sender_email=sender_email,
             )
-            for task, intake_number in result.all()
+            for task, intake_number, sender_email in result.all()
         ]

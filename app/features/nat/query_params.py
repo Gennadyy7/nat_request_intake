@@ -23,7 +23,7 @@ NAT_TASK_SORT_COLUMNS: Final[frozenset[str]] = frozenset(
     {'created_at', 'status', 'batch_id'}
 )
 NAT_RESULT_PROCESSING_SORT_COLUMNS: Final[frozenset[str]] = frozenset(
-    {'created_at', 'status', 'batch_id', 'completed_at'}
+    {'created_at', 'status', 'batch_id', 'completed_at', 'sender_email'}
 )
 
 

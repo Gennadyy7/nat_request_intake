@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.features.assomi.constants import AssomiTaskStatus
 from app.features.nat.constants import IntakeSource
@@ -13,6 +13,7 @@ class AssomiTaskListItem(BaseModel):
     aggregation_task_id: UUID
     batch_id: UUID
     intake_number: int = Field(ge=1)
+    sender_email: EmailStr
     status: AssomiTaskStatus
     found_count: int | None = None
     missing_count: int | None = None

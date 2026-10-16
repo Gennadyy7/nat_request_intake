@@ -7,3 +7,4 @@ from app.features.assomi.models import AssomiTask
 class AssomiTaskListRecord:
     task: AssomiTask
     intake_number: int
+    sender_email: str

@@ -46,6 +46,7 @@ class NatTaskListRecord:
 class NatResultProcessingListRecord:
     task: NatResultProcessingTask
     intake_number: int
+    sender_email: str
 
 
 @dataclass(frozen=True, slots=True)

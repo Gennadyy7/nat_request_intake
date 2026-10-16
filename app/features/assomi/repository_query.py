@@ -46,4 +46,5 @@ def assomi_sort_column(sort: SortParams) -> InstrumentedAttribute[object]:
         'status': AssomiTask.status,
         'batch_id': AssomiTask.nat_batch_id,
         'completed_at': AssomiTask.completed_at,
+        'sender_email': NatIntake.sender_email,
     }[sort.sort_by]
